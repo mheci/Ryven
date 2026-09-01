@@ -21,6 +21,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/12-mise-bun-deno.sh
 /ctx/13-zed.sh
 /ctx/14-media.sh
+/ctx/15-steam.sh
 
 ### Install packages
 
