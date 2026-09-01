@@ -21,6 +21,8 @@ check "git on PATH" command -v git
 check "gh on PATH" command -v gh
 check "mise on PATH" command -v mise
 check "nvidia kargs" test -f /usr/lib/bootc/kargs.d/00-nvidia.toml
+check "nvidia modprobe" test -f /usr/lib/modprobe.d/nvidia-gaming.conf
+check "shader cache env" test -f /usr/lib/environment.d/50-ryven-shader-cache.conf
 check "zswap kargs" test -f /usr/lib/bootc/kargs.d/10-zswap.toml
 check "amd zen kargs" test -f /usr/lib/bootc/kargs.d/20-amd-zen.toml
 check "ujust wrapper" test -x /usr/bin/ujust

@@ -34,6 +34,8 @@ rm -f /usr/share/vulkan/icd.d/nouveau_icd.*.json
 depmod -a "${KVER}"
 
 mkdir -p /usr/lib/bootc/kargs.d
+# Early KMS + module params from ArchWiki NVIDIA / Tips and tricks
+# (DRM KMS, PowerMizer max, ReBAR, PAT, stream memops, preserve VRAM).
 cat >/usr/lib/bootc/kargs.d/00-nvidia.toml <<'EOF'
 kargs = [
   "rd.driver.blacklist=nouveau",
@@ -41,5 +43,14 @@ kargs = [
   "rd.driver.pre=nvidia",
   "nvidia-drm.modeset=1",
   "nvidia-drm.fbdev=1",
+  "nvidia.NVreg_PreserveVideoMemoryAllocations=1",
+  "nvidia.NVreg_TemporaryFilePath=/var/tmp",
+  "nvidia.NVreg_EnableResizableBar=1",
+  "nvidia.NVreg_EnablePCIeGen3=1",
+  "nvidia.NVreg_UsePageAttributeTable=1",
+  "nvidia.NVreg_EnableStreamMemOPs=1",
+  "nvidia.NVreg_DynamicPowerManagement=0",
+  "nvidia.NVreg_EnableGpuFirmware=1",
+  "nvidia.NVreg_RegistryDwords=PerfLevelSrc=0x2222",
 ]
 EOF
