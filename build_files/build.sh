@@ -26,6 +26,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/17-faugus.sh
 /ctx/18-firefox.sh
 /ctx/19-zen.sh
+/ctx/20-brave.sh
 
 ### Install packages
 
