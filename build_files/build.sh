@@ -27,6 +27,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/18-firefox.sh
 /ctx/19-zen.sh
 /ctx/20-brave.sh
+/ctx/21-helium.sh
 
 ### Install packages
 
