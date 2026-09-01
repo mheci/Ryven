@@ -15,6 +15,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/06-nvidia-userspace.sh
 /ctx/07-secureboot-tpm.sh
 /ctx/08-chrony-nts.sh
+/ctx/09-podman-rootless.sh
 
 ### Install packages
 
