@@ -54,7 +54,6 @@ if compgen -G "/tmp/akmods-ogc/kernel-rpms/kernel-core-*.rpm" >/dev/null; then
     /tmp/akmods-ogc/kernel-rpms/kernel-modules-*.rpm \
     /tmp/akmods-ogc/kernel-rpms/kernel-devel-*.rpm || \
   dnf5 -y install /tmp/akmods-ogc/kernel-rpms/kernel-*.rpm
-  dnf5 versionlock add kernel kernel-core kernel-modules kernel-modules-core kernel-devel || true
 fi
 
 KVER=$(rpm -q kernel-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -n1)
