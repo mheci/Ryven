@@ -25,7 +25,7 @@ FROM ghcr.io/ublue-os/base-main:latest@sha256:4609d8b754a8b82d63babf63ac6ec1b369
 ## Uncomment the following line if one desires to make /opt immutable and be able to be used
 ## by the package manager.
 
-# RUN rm /opt && mkdir /opt
+RUN rm /opt && mkdir /opt
 
 ### MODIFICATIONS
 ## make modifications desired in your image and install packages by modifying the build.sh script
