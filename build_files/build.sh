@@ -24,6 +24,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/15-steam.sh
 /ctx/16-scx.sh
 /ctx/17-faugus.sh
+/ctx/18-firefox.sh
 
 ### Install packages
 
