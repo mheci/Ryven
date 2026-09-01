@@ -8,6 +8,7 @@ cp -avf "/ctx/system_files"/. /
 ### Repositories (Fedora 44)
 
 /ctx/01-rpmfusion.sh
+/ctx/02-terra.sh
 
 ### Install packages
 
