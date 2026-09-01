@@ -14,6 +14,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/05-nvidia-open.sh
 /ctx/06-nvidia-userspace.sh
 /ctx/07-secureboot-tpm.sh
+/ctx/08-chrony-nts.sh
 
 ### Install packages
 
