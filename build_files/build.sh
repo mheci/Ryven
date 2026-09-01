@@ -33,6 +33,15 @@ cp -avf "/ctx/system_files"/. /
 /ctx/26-greenboot.sh
 /ctx/27-sudo-rs.sh
 /ctx/28-fonts.sh
+/ctx/29-branding.sh
+/ctx/30-scopebuddy.sh
+/ctx/31-cardwire.sh
+/ctx/32-bees.sh
+/ctx/33-openrazer.sh
+/ctx/34-mangohud.sh
+/ctx/35-kyber.sh
+/ctx/36-uupd.sh
+/ctx/37-flatpaks.sh
 /ctx/22-goss.sh
 
 ### Install packages
