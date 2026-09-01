@@ -6,17 +6,16 @@
 set -ouex pipefail
 
 NVIDIA_REPO=cuda-fedora44-x86_64
-KVER=$(rpm -q kernel --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -n1)
+KVER=$(rpm -q kernel-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -n1)
 
 dnf5 -y install --enablerepo="${NVIDIA_REPO}" \
-  "kernel-devel-${KVER}" \
   kernel-devel-matched \
   kernel-headers
 
 dnf5 -y install --enablerepo="${NVIDIA_REPO}" nvidia-open
 
 if command -v dkms >/dev/null; then
-  dkms autoinstall -k "${KVER}" || dkms install "nvidia/$(dkms status nvidia | awk -F', |/' 'NR==1{print $2}')" -k "${KVER}" || true
+  dkms autoinstall -k "${KVER}"
 fi
 
 depmod -a "${KVER}"
