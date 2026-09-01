@@ -17,6 +17,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/08-chrony-nts.sh
 /ctx/09-podman-rootless.sh
 /ctx/10-firewall-sshd.sh
+/ctx/11-git-gh-gcm.sh
 
 ### Install packages
 
