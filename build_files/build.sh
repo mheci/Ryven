@@ -12,6 +12,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/03-nvidia-repo.sh
 /ctx/04-disable-third-party-repos.sh
 /ctx/05-nvidia-open.sh
+/ctx/06-nvidia-userspace.sh
 
 ### Install packages
 
