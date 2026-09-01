@@ -13,6 +13,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/04-disable-third-party-repos.sh
 /ctx/05-nvidia-open.sh
 /ctx/06-nvidia-userspace.sh
+/ctx/07-secureboot-tpm.sh
 
 ### Install packages
 

@@ -1,0 +1,53 @@
+# Ryven host recipes. Do not reboot unless the user passes reboot="1".
+
+[group('security')]
+secure-boot-enroll reboot="0":
+    #!/usr/bin/bash
+    set -euo pipefail
+    CERT=""
+    for c in /etc/pki/akmods/certs/akmods-ublue.der \
+             /etc/pki/akmods/certs/public_key.der \
+             /usr/share/ublue-os/akmods/certs/akmods-ublue.der; do
+      if [[ -f $c ]]; then
+        CERT=$c
+        break
+      fi
+    done
+    if [[ -z $CERT ]]; then
+      echo "No MOK certificate found. NVIDIA/akmods DER is not on this image." >&2
+      exit 1
+    fi
+    echo "Importing ${CERT} into MOK. Confirm in the firmware blue screen after reboot."
+    sudo mokutil --import "${CERT}"
+    if [[ "{{ reboot }}" == "1" ]]; then
+      echo "reboot=1 set; rebooting."
+      sudo systemctl reboot
+    else
+      echo "Reboot required to finish enrollment. Not rebooting."
+    fi
+
+[group('security')]
+tpm-luks-unlock:
+    #!/usr/bin/bash
+    set -euo pipefail
+    if [[ ${EUID} -ne 0 ]]; then
+      exec sudo "$0" tpm-luks-unlock
+    fi
+    mapfile -t LUKS < <(lsblk -np -o NAME,FSTYPE | awk '$2=="crypto_LUKS"{print $1}')
+    if [[ ${#LUKS[@]} -eq 0 ]]; then
+      echo "No LUKS devices found. Refusing to bind TPM." >&2
+      exit 1
+    fi
+    echo "LUKS devices:"
+    printf '  %s\n' "${LUKS[@]}"
+    echo "This binds TPM2 PCR unlock via clevis. A failed bind can make the volume unbootable."
+    read -r -p "Type BIND to continue: " confirm
+    if [[ $confirm != BIND ]]; then
+      echo "Aborted."
+      exit 1
+    fi
+    for dev in "${LUKS[@]}"; do
+      clevis luks bind -d "${dev}" tpm2 '{"pcr_bank":"sha256"}'
+    done
+    echo "Clevis bind complete. Rebuild initramfs if needed: rpm-ostree initramfs --enable"
+    echo "Not rebooting."
