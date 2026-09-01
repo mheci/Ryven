@@ -19,6 +19,26 @@ sudo bootc switch ghcr.io/mheci/ryven:latest
 
 Verify the signature against `cosign.pub` before trusting a new digest.
 
+Daily CI rebuilds GHCR only. It does **not** reboot hosts. On a Ryven system, pull without applying:
+
+```bash
+sudo bootc upgrade
+```
+
+Do **not** pass `--apply` unless you intend to reboot immediately. After a staged update, reboot on your own schedule (`systemctl reboot`).
+
+Host recipes (`ujust`, `/usr/share/ryven/justfile`):
+
+| Recipe | Effect |
+| --- | --- |
+| `ujust secure-boot-enroll` | `mokutil --import` of the akmods DER. Reboots only if `reboot=1`. |
+| `ujust tpm-luks-unlock` | Clevis TPM2 bind; requires typing `BIND`. Refuses if no LUKS. Never reboots. |
+| `ujust scx-select` | Lists `scx_*` binaries. Writes `/etc/default/scx` when `scheduler=` is set. Starts a unit only if `start=1`. Never reboots. |
+
+`/opt` is a real directory in the image (not a symlink to `/var/opt`) so RPMs such as Zen and Helium persist across bootc deploys.
+
+Not in the image (no Fedora 44 RPM, no curl installers): pi-agent, t3code, opencode, proton-cachyos. ISO naming/compression workflows are blocked until the GitHub token has `workflow` scope.
+
 ## Layout
 
 | Path | Role |
