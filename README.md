@@ -1,71 +1,56 @@
 # Ryven
 
-Personal [bootc](https://github.com/bootc-dev/bootc) image. Derived from [`ghcr.io/ublue-os/kinoite-main:latest`](https://github.com/ublue-os/main) (Fedora Kinoite / KDE Plasma). Built, rechunked, pushed, and cosign-signed by GitHub Actions.
+Personal [bootc](https://github.com/bootc-dev/bootc) image on **Fedora 44 Kinoite** (KDE Plasma) with the OGC kernel and nvidia-open kmods from Universal Blue.
 
 | | |
 | --- | --- |
 | Registry | `ghcr.io/mheci/ryven` |
-| OCI title | `Ryven` |
 | Default tag | `latest` |
-| Base | `ghcr.io/ublue-os/kinoite-main:latest` |
-| Build | `.github/workflows/build.yml` (push to `main`, daily `05 10 * * *` UTC, `workflow_dispatch`) |
-| Signing | Cosign; public key `cosign.pub`; private key is Actions secret `SIGNING_SECRET` |
+| Base | `ghcr.io/ublue-os/kinoite-main:latest` (digest-pinned) |
+| Login | Plasma Login Manager (`plasmalogin`), not SDDM |
+| GPU | ublue `akmods-nvidia-open:ogc-44` + OGC kernel |
+| Memory | zswap on, zram off |
+| Signing | Cosign (`cosign.pub`; secret `SIGNING_SECRET`) |
 
-## Switch (bootc host)
+## Switch
 
 ```bash
 sudo bootc switch ghcr.io/mheci/ryven:latest
+sudo bootc upgrade          # stage only — do not pass --apply
 ```
 
-Verify the signature against `cosign.pub` before trusting a new digest.
+Daily CI rebuilds GHCR. It never reboots machines.
 
-Daily CI rebuilds GHCR only. It does **not** reboot hosts. On a Ryven system, pull without applying:
+## In the image
 
-```bash
-sudo bootc upgrade
-```
+- NVIDIA open kmods, VA-API (`libva-nvidia-driver` i686+x86_64), Vulkan, 10 GiB shader caches
+- Steam, gamescope, ScopeBuddy (`scb`), MangoHud, OBS VkCapture
+- Cardwire (`cardwired`), OpenRazer userspace + Polychromatic
+- bees timer for Steam Proton `compatdata`
+- Kyber I/O scheduler on SCSI/virtio/MMC
+- uupd + topgrade (no auto-reboot)
+- System Flatpaks: Flatseal, Warehouse, Gear Lever, Bazaar
+- greenboot (Rust), sudo-rs (beside sudo)
+- Firefox RPM, Zen, Brave Origin, Helium
+- Fonts: DejaVu, Droid, Open Sans, Adwaita, Nerd Fonts when packaged
 
-Do **not** pass `--apply` unless you intend to reboot immediately. After a staged update, reboot on your own schedule (`systemctl reboot`).
+`ujust` recipes: `secure-boot-enroll`, `tpm-luks-unlock`, `scx-select`. Reboot only if you pass `reboot=1`.
 
-Host recipes (`ujust`, `/usr/share/ryven/justfile`):
-
-| Recipe | Effect |
-| --- | --- |
-| `ujust secure-boot-enroll` | `mokutil --import` of the akmods DER. Reboots only if `reboot=1`. |
-| `ujust tpm-luks-unlock` | Clevis TPM2 bind; requires typing `BIND`. Refuses if no LUKS. Never reboots. |
-| `ujust scx-select` | Lists `scx_*` binaries. Writes `/etc/default/scx` when `scheduler=` is set. Starts a unit only if `start=1`. Never reboots. |
-
-`/opt` is a real directory in the image (not a symlink to `/var/opt`) so RPMs such as Zen and Helium persist across bootc deploys.
-
-Not in the image (no Fedora 44 RPM, no curl installers): pi-agent, t3code, opencode, proton-cachyos. ISO naming/compression workflows are blocked until the GitHub token has `workflow` scope.
+Not shipped: CUDA toolkit, Docker, VMs, mesa-freeworld swap, curl installers (pi-agent, opencode, t3code). ISO extra workflows need a GitHub token with `workflow` scope.
 
 ## Layout
 
 | Path | Role |
 | --- | --- |
-| `Containerfile` | Image definition (`FROM` + `build.sh`) |
-| `build_files/build.sh` | Package installs and image customizations |
-| `system_files/` | Overlay into `/` (`etc/`, `usr/`) |
-| `ryven.env` | `IMAGE_NAME=Ryven` and related build metadata |
-| `disk_config/` | bootc-image-builder configs; kickstart targets `ghcr.io/mheci/ryven:latest` |
-| `.github/workflows/build.yml` | OCI build, rechunk, GHCR push, cosign |
-| `.github/workflows/build-disk.yml` | Optional qcow2 / Anaconda ISO |
+| `Containerfile` | `FROM kinoite-main` + `build.sh` |
+| `build_files/` | Assemble scripts (numbered) |
+| `system_files/` | Overlay into `/` |
+| `ryven.env` | Image metadata |
+| `disk_config/` | bootc-image-builder / kickstart |
 
 ## Local build
 
-Requires `just`, `podman`, `jq`.
-
 ```bash
-just build          # tags localhost-usable ref `ryven:latest` (OCI lowercase)
+just build
 just ostree-rechunk
 ```
-
-`IMAGE_NAME` in `ryven.env` is `Ryven`. The Justfile lowercases it for Podman/GHCR refs. OCI image names cannot contain uppercase letters.
-
-## Disk images
-
-`build-disk.yml` is manual (`workflow_dispatch`). ISO kickstarts rebase the installed system to `ghcr.io/mheci/ryven:latest`. S3 upload is optional (see Actions secrets `S3_*`).
-
-## Just recipes
-
-See `Justfile`. Common: `just build`, `just ostree-rechunk`, `just build-qcow2`, `just lint`, `just format`.
