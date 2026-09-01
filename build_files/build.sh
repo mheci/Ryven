@@ -20,6 +20,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/11-git-gh-gcm.sh
 /ctx/12-mise-bun-deno.sh
 /ctx/13-zed.sh
+/ctx/14-media.sh
 
 ### Install packages
 
