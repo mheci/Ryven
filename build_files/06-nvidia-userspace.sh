@@ -1,6 +1,6 @@
 #!/bin/bash
-# NVIDIA userspace without CUDA toolkit. VA-API + settings.
-# Kernel modules already installed by 05-nvidia-open.sh.
+# NVIDIA VA-API (NVDEC/NVENC wrapper) + Vulkan userspace from Fusion.
+# Kernel modules come from ublue akmods-nvidia-open, not the CUDA repo.
 
 set -ouex pipefail
 
@@ -9,5 +9,9 @@ dnf5 -y install \
   --enablerepo=rpmfusion-nonfree-updates \
   --exclude='cuda*' \
   --exclude='*nvidia*cuda*' \
-  libva-nvidia-driver \
-  nvidia-settings
+  libva-nvidia-driver.x86_64 \
+  libva-nvidia-driver.i686 \
+  nvidia-settings \
+  vulkan-loader.x86_64 \
+  vulkan-loader.i686 \
+  vulkan-tools

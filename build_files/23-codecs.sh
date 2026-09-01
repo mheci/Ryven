@@ -1,6 +1,6 @@
 #!/bin/bash
-# Fusion codecs + GPU VA-API (Fedora 44). No mesa-*-freeworld swap
-# (that --allowerasing transaction removes nvidia-driver).
+# Fusion codecs, NVDEC/NVENC via libva-nvidia-driver, GStreamer, thumbnails.
+# Do not swap mesa-*-freeworld: that removes nvidia-driver.
 
 set -ouex pipefail
 
@@ -10,10 +10,11 @@ dnf5 -y swap "${FUSION[@]}" --allowerasing ffmpeg-free ffmpeg || \
   dnf5 -y install "${FUSION[@]}" ffmpeg
 
 dnf5 -y install --skip-unavailable "${FUSION[@]}" \
+  libva-nvidia-driver.x86_64 \
+  libva-nvidia-driver.i686 \
   intel-media-driver \
   libva-intel-driver \
-  libva-nvidia-driver \
-  libva-nvidia-driver.i686 \
+  libva \
   libva-utils \
   libvdpau \
   vdpauinfo \
@@ -21,6 +22,7 @@ dnf5 -y install --skip-unavailable "${FUSION[@]}" \
   gstreamer1-plugins-bad-freeworld \
   gstreamer1-plugin-libav \
   gstreamer1-plugin-openh264 \
+  gstreamer1-vaapi \
   mozilla-openh264 \
   x264 \
   x265 \
@@ -29,8 +31,9 @@ dnf5 -y install --skip-unavailable "${FUSION[@]}" \
   svt-av1 \
   lame \
   opus \
-  libva \
-  pipewire-codec-aptx
+  pipewire-codec-aptx \
+  ffmpegthumbnailer \
+  ffmpegthumbs
 
 dnf5 -y install "${FUSION[@]}" rpmfusion-free-release-tainted || true
 dnf5 -y install --enablerepo=rpmfusion-free-tainted libdvdcss || true

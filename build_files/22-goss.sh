@@ -33,6 +33,7 @@ check "firewalld enabled" bash -c '[[ $(systemctl is-enabled firewalld.service) 
 check "nvidia kmod present" bash -c 'find /usr/lib/modules -name "nvidia*.ko*" -print -quit | grep -q .'
 check "ffmpeg rpm" rpm -q ffmpeg
 check "libva-nvidia-driver" rpm -q libva-nvidia-driver
+check "zram generator disabled" bash -c '! systemctl is-enabled systemd-zram-setup@zram0.service 2>/dev/null | grep -qx enabled'
 check "no firefox flatpak" bash -c '! command -v flatpak >/dev/null || ! flatpak info --system org.mozilla.firefox >/dev/null 2>&1'
 check "docker group empty or absent" bash -c '
   if getent group docker >/dev/null; then

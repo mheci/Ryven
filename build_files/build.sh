@@ -9,7 +9,6 @@ cp -avf "/ctx/system_files"/. /
 
 /ctx/01-rpmfusion.sh
 /ctx/02-terra.sh
-/ctx/03-nvidia-repo.sh
 /ctx/04-disable-third-party-repos.sh
 /ctx/05-nvidia-open.sh
 /ctx/06-nvidia-userspace.sh
@@ -29,6 +28,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/20-brave.sh
 /ctx/21-helium.sh
 /ctx/23-codecs.sh
+/ctx/24-zram-off.sh
 /ctx/22-goss.sh
 
 ### Install packages
