@@ -11,6 +11,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/02-terra.sh
 /ctx/03-nvidia-repo.sh
 /ctx/04-disable-third-party-repos.sh
+/ctx/05-nvidia-open.sh
 
 ### Install packages
 
