@@ -4,7 +4,8 @@ COPY build_files /
 COPY system_files /system_files
 
 # Base Image
-FROM ghcr.io/ublue-os/base-main:latest
+# Track ghcr.io/ublue-os/base-main:latest; digest pinned for reproducible builds (Renovate bumps).
+FROM ghcr.io/ublue-os/base-main:latest@sha256:4609d8b754a8b82d63babf63ac6ec1b3693967e2452724e238292a15f935d428
 ## Other possible base images include:
 # FROM ghcr.io/ublue-os/bazzite:testing
 # FROM ghcr.io/ublue-os/aurora:stable

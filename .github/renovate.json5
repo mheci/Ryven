@@ -6,10 +6,20 @@
 
   "rebaseWhen": "never",
 
+  "dockerfile": {
+    "pinDigests": true
+  },
+
   "packageRules": [
     {
       "automerge": true,
       "matchUpdateTypes": ["pin", "pinDigest"]
+    },
+    {
+      "description": "Automerge digest bumps for the Ryven Containerfile base image",
+      "matchManagers": ["dockerfile"],
+      "matchUpdateTypes": ["digest", "pinDigest"],
+      "automerge": true
     },
     {
       "enabled": false,
