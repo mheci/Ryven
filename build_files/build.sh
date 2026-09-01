@@ -16,6 +16,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/07-secureboot-tpm.sh
 /ctx/08-chrony-nts.sh
 /ctx/09-podman-rootless.sh
+/ctx/10-firewall-sshd.sh
 
 ### Install packages
 
