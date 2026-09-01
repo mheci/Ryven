@@ -22,6 +22,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/13-zed.sh
 /ctx/14-media.sh
 /ctx/15-steam.sh
+/ctx/16-scx.sh
 
 ### Install packages
 
