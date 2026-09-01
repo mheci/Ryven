@@ -31,7 +31,7 @@ tpm-luks-unlock:
     #!/usr/bin/bash
     set -euo pipefail
     if [[ ${EUID} -ne 0 ]]; then
-      exec sudo "$0" tpm-luks-unlock
+      exec sudo /usr/bin/ujust tpm-luks-unlock
     fi
     mapfile -t LUKS < <(lsblk -np -o NAME,FSTYPE | awk '$2=="crypto_LUKS"{print $1}')
     if [[ ${#LUKS[@]} -eq 0 ]]; then
@@ -50,4 +50,44 @@ tpm-luks-unlock:
       clevis luks bind -d "${dev}" tpm2 '{"pcr_bank":"sha256"}'
     done
     echo "Clevis bind complete. Rebuild initramfs if needed: rpm-ostree initramfs --enable"
+    echo "Not rebooting."
+
+[group('performance')]
+scx-select scheduler="" start="0":
+    #!/usr/bin/bash
+    set -euo pipefail
+    mapfile -t AVAIL < <(compgen -c | grep -E '^scx_' | sort -u || true)
+    if [[ -z "{{ scheduler }}" ]]; then
+      echo "Installed sched-ext userspace binaries:"
+      printf '  %s\n' "${AVAIL[@]:-none}"
+      echo "Usage: ujust scx-select scheduler=scx_lavd start=1"
+      echo "Loader stays disabled until start=1. Never reboots."
+      exit 0
+    fi
+    WANT="{{ scheduler }}"
+    if [[ ${WANT} != scx_* ]]; then
+      WANT="scx_${WANT}"
+    fi
+    if ! command -v "${WANT}" >/dev/null 2>&1; then
+      echo "Unknown scheduler ${WANT}. Available:" >&2
+      printf '  %s\n' "${AVAIL[@]:-none}" >&2
+      exit 1
+    fi
+    if [[ ${EUID} -ne 0 ]]; then
+      exec sudo /usr/bin/ujust scx-select scheduler="{{ scheduler }}" start="{{ start }}"
+    fi
+    mkdir -p /etc/default
+    printf 'SCX_SCHEDULER=%s\n' "${WANT}" >/etc/default/scx
+    echo "Wrote /etc/default/scx with ${WANT}."
+    if [[ "{{ start }}" == "1" ]]; then
+      if systemctl list-unit-files scx.service >/dev/null 2>&1; then
+        systemctl enable --now scx.service || systemctl restart scx.service
+      elif systemctl list-unit-files scx-loader.service >/dev/null 2>&1; then
+        systemctl enable --now scx-loader.service || true
+      else
+        echo "No scx systemd unit. Start manually: ${WANT}"
+      fi
+    else
+      echo "Not starting a scheduler (start=0). A bad sched-ext can panic the host."
+    fi
     echo "Not rebooting."
