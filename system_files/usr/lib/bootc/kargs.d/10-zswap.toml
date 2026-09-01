@@ -1,0 +1,8 @@
+# zswap: compress RAM before disk swap. zstd + zsmalloc for low latency.
+kargs = [
+  "zswap.enabled=1",
+  "zswap.compressor=zstd",
+  "zswap.zpool=zsmalloc",
+  "zswap.max_pool_percent=20",
+  "zswap.shrinker_enabled=1",
+]

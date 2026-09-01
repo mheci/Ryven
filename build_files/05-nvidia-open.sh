@@ -35,5 +35,11 @@ depmod -a "${KVER}"
 
 mkdir -p /usr/lib/bootc/kargs.d
 cat >/usr/lib/bootc/kargs.d/00-nvidia.toml <<'EOF'
-kargs = ["rd.driver.blacklist=nouveau", "modprobe.blacklist=nouveau", "nvidia-drm.modeset=1"]
+kargs = [
+  "rd.driver.blacklist=nouveau",
+  "modprobe.blacklist=nouveau",
+  "rd.driver.pre=nvidia",
+  "nvidia-drm.modeset=1",
+  "nvidia-drm.fbdev=1",
+]
 EOF

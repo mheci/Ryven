@@ -20,6 +20,9 @@ check "firefox rpm" rpm -q firefox
 check "git on PATH" command -v git
 check "gh on PATH" command -v gh
 check "mise on PATH" command -v mise
+check "nvidia kargs" test -f /usr/lib/bootc/kargs.d/00-nvidia.toml
+check "zswap kargs" test -f /usr/lib/bootc/kargs.d/10-zswap.toml
+check "amd zen kargs" test -f /usr/lib/bootc/kargs.d/20-amd-zen.toml
 check "ujust wrapper" test -x /usr/bin/ujust
 check "ryven justfile" test -f /usr/share/ryven/justfile
 check "chronyd enabled" bash -c '[[ $(systemctl is-enabled chronyd.service) == enabled ]]'
