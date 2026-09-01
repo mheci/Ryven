@@ -23,6 +23,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/14-media.sh
 /ctx/15-steam.sh
 /ctx/16-scx.sh
+/ctx/17-faugus.sh
 
 ### Install packages
 
