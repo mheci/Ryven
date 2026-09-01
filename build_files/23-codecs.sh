@@ -14,6 +14,8 @@ dnf5 -y install --skip-unavailable "${FUSION[@]}" ffmpeg || true
 
 # Skip Fusion x265 / gstreamer1-plugins-bad-freeworld: they need
 # libx265.so.215 and conflict with fedora-multimedia x265-libs 4.2.
+# pipewire-codec-aptx conflicts with pipewire-libs-extra on F44.
+# ffmpegthumbs pulls KDE Frameworks; use ffmpegthumbnailer only.
 dnf5 -y install --skip-unavailable --skip-broken "${FUSION[@]}" \
   libva-nvidia-driver.x86_64 \
   libva-nvidia-driver.i686 \
@@ -34,9 +36,7 @@ dnf5 -y install --skip-unavailable --skip-broken "${FUSION[@]}" \
   svt-av1 \
   lame \
   opus \
-  pipewire-codec-aptx \
-  ffmpegthumbnailer \
-  ffmpegthumbs
+  ffmpegthumbnailer || true
 
 dnf5 -y install "${FUSION[@]}" rpmfusion-free-release-tainted || true
 dnf5 -y install --enablerepo=rpmfusion-free-tainted libdvdcss || true
