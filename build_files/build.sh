@@ -18,6 +18,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/09-podman-rootless.sh
 /ctx/10-firewall-sshd.sh
 /ctx/11-git-gh-gcm.sh
+/ctx/12-mise-bun-deno.sh
 
 ### Install packages
 
