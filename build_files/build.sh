@@ -9,6 +9,7 @@ cp -avf "/ctx/system_files"/. /
 
 /ctx/01-rpmfusion.sh
 /ctx/02-terra.sh
+/ctx/03-nvidia-repo.sh
 
 ### Install packages
 
