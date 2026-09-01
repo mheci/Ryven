@@ -29,6 +29,10 @@ cp -avf "/ctx/system_files"/. /
 /ctx/21-helium.sh
 /ctx/23-codecs.sh
 /ctx/24-zram-off.sh
+/ctx/25-plasma-login.sh
+/ctx/26-greenboot.sh
+/ctx/27-sudo-rs.sh
+/ctx/28-fonts.sh
 /ctx/22-goss.sh
 
 ### Install packages
