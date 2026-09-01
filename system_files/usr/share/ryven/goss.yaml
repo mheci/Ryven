@@ -1,0 +1,35 @@
+# Image invariants. Evaluated at the end of the container build
+# (no GPU, no systemd PID 1). Prefer file/package checks over running units.
+package:
+  firefox:
+    installed: true
+  git:
+    installed: true
+  gh:
+    installed: true
+  chrony:
+    installed: true
+  firewalld:
+    installed: true
+file:
+  /usr/bin/git:
+    exists: true
+  /usr/bin/gh:
+    exists: true
+  /usr/bin/mise:
+    exists: true
+  /usr/bin/ujust:
+    exists: true
+  /usr/share/ryven/justfile:
+    exists: true
+  /usr/bin/firefox:
+    exists: true
+command:
+  systemctl is-enabled chronyd.service:
+    exit-status: 0
+    stdout:
+      - enabled
+  systemctl is-enabled sshd.service:
+    exit-status: 1
+  rpm -q firefox:
+    exit-status: 0
