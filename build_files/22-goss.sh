@@ -31,6 +31,8 @@ check "chronyd enabled" bash -c '[[ $(systemctl is-enabled chronyd.service) == e
 check "sshd not enabled" bash -c 's=$(systemctl is-enabled sshd.service 2>/dev/null || true); [[ $s != enabled ]]'
 check "firewalld enabled" bash -c '[[ $(systemctl is-enabled firewalld.service) == enabled ]]'
 check "nvidia kmod present" bash -c 'find /usr/lib/modules -name "nvidia*.ko*" -print -quit | grep -q .'
+check "ffmpeg rpm" rpm -q ffmpeg
+check "libva-nvidia-driver" rpm -q libva-nvidia-driver
 check "no firefox flatpak" bash -c '! command -v flatpak >/dev/null || ! flatpak info --system org.mozilla.firefox >/dev/null 2>&1'
 check "docker group empty or absent" bash -c '
   if getent group docker >/dev/null; then

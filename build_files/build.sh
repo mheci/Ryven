@@ -28,6 +28,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/19-zen.sh
 /ctx/20-brave.sh
 /ctx/21-helium.sh
+/ctx/23-codecs.sh
 /ctx/22-goss.sh
 
 ### Install packages
