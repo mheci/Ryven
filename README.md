@@ -1,13 +1,13 @@
 # Ryven
 
-Personal [bootc](https://github.com/bootc-dev/bootc) image. Derived from [`ghcr.io/ublue-os/base-main:latest`](https://github.com/ublue-os/main). Built, rechunked, pushed, and cosign-signed by GitHub Actions.
+Personal [bootc](https://github.com/bootc-dev/bootc) image. Derived from [`ghcr.io/ublue-os/kinoite-main:latest`](https://github.com/ublue-os/main) (Fedora Kinoite / KDE Plasma). Built, rechunked, pushed, and cosign-signed by GitHub Actions.
 
 | | |
 | --- | --- |
 | Registry | `ghcr.io/mheci/ryven` |
 | OCI title | `Ryven` |
 | Default tag | `latest` |
-| Base | `ghcr.io/ublue-os/base-main:latest` |
+| Base | `ghcr.io/ublue-os/kinoite-main:latest` |
 | Build | `.github/workflows/build.yml` (push to `main`, daily `05 10 * * *` UTC, `workflow_dispatch`) |
 | Signing | Cosign; public key `cosign.pub`; private key is Actions secret `SIGNING_SECRET` |
 

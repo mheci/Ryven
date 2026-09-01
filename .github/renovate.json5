@@ -27,16 +27,16 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "Pin ghcr.io/ublue-os/base-main digest in Containerfile",
+      "description": "Pin ghcr.io/ublue-os/kinoite-main digest in Containerfile",
       "managerFilePatterns": ["/(^|/)Containerfile$/"],
       "matchStrings": [
-        "FROM ghcr.io/ublue-os/base-main:latest@(?<currentDigest>sha256:[a-f0-9]+)",
+        "FROM ghcr.io/ublue-os/kinoite-main:latest@(?<currentDigest>sha256:[a-f0-9]+)",
       ],
       "datasourceTemplate": "docker",
       "registryUrlTemplate": "https://ghcr.io",
-      "depNameTemplate": "ublue-os/base-main",
-      "packageNameTemplate": "ublue-os/base-main",
-      "autoReplaceStringTemplate": "FROM ghcr.io/ublue-os/base-main:latest@{{{newDigest}}}",
+      "depNameTemplate": "ublue-os/kinoite-main",
+      "packageNameTemplate": "ublue-os/kinoite-main",
+      "autoReplaceStringTemplate": "FROM ghcr.io/ublue-os/kinoite-main:latest@{{{newDigest}}}",
     },
   ],
 
