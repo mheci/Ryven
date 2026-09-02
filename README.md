@@ -37,7 +37,7 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
 - 10 GiB shader caches
 - Steam RPM, **proton-cachyos** (SLR), NTSync 0666, Proton Wayland + HDR
 - `terra-gamescope`, ScopeBuddy (`scb`), MangoHud, Heroic, ProtonPlus, Helium, GPU Screen Recorder, Polychromatic
-- **scx-scheds-nightly** + **scx-tools-nightly** / `scx_loader` with lavd `--performance`
+- **scx-scheds** + **scx-tools** / `scx_loader` with lavd `--performance`
 - **bpftune-gaming** and **ananicy-cpp** + CachyOS rules
 - beesd@UUID on host btrfs, NVMe kyber / HDD bfq
 - **mpv**, Terra ffmpeg, **t3code**, **zed**, ghostty-tip
