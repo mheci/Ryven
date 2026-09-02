@@ -123,8 +123,8 @@ build $target_image=image_name $tag=default_tag:
     LABELS+=("--label" "org.opencontainers.image.title={{ image_title }}")
     LABELS+=("--label" "org.opencontainers.image.vendor={{ repo_organization }}")
 
-    # This actually builds the image!
-    PODMAN_BUILD_ARGS=("${BUILD_ARGS[@]}" "${LABELS[@]}" --pull=newer --tag "${target_image}:${tag}" --file Containerfile)
+    CONTAINERFILE="${CONTAINERFILE:-Containerfile}"
+    PODMAN_BUILD_ARGS=("${BUILD_ARGS[@]}" "${LABELS[@]}" --pull=newer --tag "${target_image}:${tag}" --file "${CONTAINERFILE}")
 
     podman build "${PODMAN_BUILD_ARGS[@]}" .
 

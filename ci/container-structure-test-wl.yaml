@@ -1,0 +1,21 @@
+schemaVersion: "2.0.0"
+fileExistenceTests:
+  - name: hyprland config
+    path: /usr/share/hypr/hyprland.conf
+    shouldExist: true
+  - name: greetd
+    path: /etc/greetd/config.toml
+    shouldExist: true
+  - name: nvidia kargs
+    path: /usr/lib/bootc/kargs.d/00-nvidia.toml
+    shouldExist: true
+commandTests:
+  - name: hyprland rpm
+    command: rpm
+    args: ["-q", "hyprland"]
+  - name: quickshell rpm
+    command: rpm
+    args: ["-q", "quickshell"]
+  - name: master layout
+    command: grep
+    args: ["-q", "layout = master", "/usr/share/hypr/hyprland.conf"]

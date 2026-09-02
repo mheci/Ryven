@@ -16,14 +16,25 @@ on:
 env:
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
-  cancel-in-progress: false
-
 jobs:
   build_push:
-    name: Build and push image
+    name: Build ${{ matrix.image }}
     runs-on: ubuntu-26.04
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: ryven
+            containerfile: Containerfile
+            goss: ci/goss.yaml
+            cst: ci/container-structure-test.yaml
+          - image: ryven-wl
+            containerfile: Containerfile.wl
+            goss: ci/goss-wl.yaml
+            cst: ci/container-structure-test-wl.yaml
 
     permissions:
       contents: read
@@ -51,9 +62,8 @@ jobs:
       - name: Image Name
         id: image-name
         run: |
-          IMAGE_NAME=$(just image_name)
-
-          echo "IMAGE_NAME=${IMAGE_NAME}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ matrix.image }}" >> $GITHUB_ENV
+          echo "CONTAINERFILE=${{ matrix.containerfile }}" >> $GITHUB_ENV
 
       - name: Default Tag
         id: gen-default-tag
@@ -134,7 +144,7 @@ jobs:
           podman run --rm \
             --entrypoint /bin/bash \
             -v /tmp/goss:/goss:ro \
-            -v "${PWD}/ci/goss.yaml:/goss.yaml:ro" \
+            -v "${PWD}/${{ matrix.goss }}:/goss.yaml:ro" \
             "${IMAGE_NAME}:${DEFAULT_TAG}" \
             -c '/goss --gossfile /goss.yaml validate --format documentation'
 
@@ -148,7 +158,7 @@ jobs:
           chmod +x /tmp/cst
           podman save -o /tmp/ryven.tar "${IMAGE_NAME}:${DEFAULT_TAG}"
           /tmp/cst test --driver tar --image /tmp/ryven.tar \
-            --config ci/container-structure-test.yaml
+            --config ${{ matrix.cst }}
           rm -f /tmp/ryven.tar
 
       # Informational: Fedora/Kinoite base CVEs must not fail the image job.
@@ -163,12 +173,12 @@ jobs:
           output-format: sarif
 
       - name: Upload Grype SARIF
-        if: always() && hashFiles(steps.grype.outputs.sarif) != ''
+        if: always()
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: ${{ steps.grype.outputs.sarif }}
-          category: grype
+          category: grype-${{ matrix.image }}
 
       # These `if` statements are so that pull requests for your custom images do not make it publish any packages under your name without you knowing
       # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work
