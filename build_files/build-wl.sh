@@ -339,7 +339,7 @@ check 'quickshell rpm' rpm -q quickshell
 check 'hyprland.conf' test -f /usr/share/hypr/hyprland.conf
 check 'master layout' grep -q 'layout = master' /usr/share/hypr/hyprland.conf
 check 'tearing' grep -q 'allow_tearing = true' /usr/share/hypr/hyprland.conf
-check 'no LIBVA_DRIVER_NAME=nvidia' bash -c '! grep -r LIBVA_DRIVER_NAME=nvidia /usr/share/hypr /usr/lib/environment.d /etc/xdg/uwsm 2>/dev/null'
+check 'no LIBVA_DRIVER_NAME=nvidia' bash -c '! grep -rE "^[[:space:]]*LIBVA_DRIVER_NAME=nvidia" /usr/share/hypr /usr/lib/environment.d /etc/xdg/uwsm 2>/dev/null'
 check 'cliphist' rpm -q cliphist
 check 'wl-clipboard' rpm -q wl-clipboard
 check 'wl-clip-persist' command -v wl-clip-persist

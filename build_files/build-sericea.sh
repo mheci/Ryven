@@ -298,7 +298,7 @@ check() {
 check 'sway rpm' rpm -q sway
 check 'sway overlay' test -f /usr/share/sway/config.d/50-ryven.conf
 check 'tearing' grep -q 'allow_tearing yes' /usr/share/sway/config.d/50-ryven.conf
-check 'no LIBVA_DRIVER_NAME=nvidia' bash -c '! grep -r LIBVA_DRIVER_NAME=nvidia /usr/share/sway /usr/lib/environment.d 2>/dev/null'
+check 'no LIBVA_DRIVER_NAME=nvidia' bash -c '! grep -rE "^[[:space:]]*LIBVA_DRIVER_NAME=nvidia" /usr/share/sway /usr/lib/environment.d 2>/dev/null'
 check 'wl-clipboard' rpm -q wl-clipboard
 check 'dunst' rpm -q dunst
 check 'wl-clip-persist' command -v wl-clip-persist

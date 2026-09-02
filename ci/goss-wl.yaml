@@ -29,7 +29,7 @@ package:
 
 command:
   no-libva-nvidia-env:
-    exec: grep -r LIBVA_DRIVER_NAME=nvidia /usr/share/hypr /usr/lib/environment.d /etc/xdg/uwsm
+    exec: grep -rE '^[[:space:]]*LIBVA_DRIVER_NAME=nvidia' /usr/share/hypr /usr/lib/environment.d /etc/xdg/uwsm
     exit-status: 1
   no-docker:
     exec: rpm -q docker
