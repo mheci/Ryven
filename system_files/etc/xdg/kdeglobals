@@ -1,0 +1,24 @@
+[General]
+ColorScheme=Ryven
+Name=Ryven
+TerminalApplication=konsole
+TerminalService=org.kde.konsole.desktop
+fixed=Adwaita Mono,10,-1,5,50,0,0,0,0,0
+font=Adwaita Sans,10,-1,5,50,0,0,0,0,0
+menuFont=Adwaita Sans,10,-1,5,50,0,0,0,0,0
+smallestReadableFont=Adwaita Sans,8,-1,5,50,0,0,0,0,0
+toolBarFont=Adwaita Sans,10,-1,5,50,0,0,0,0,0
+
+[KDE]
+LookAndFeelPackage=org.ryven.desktop
+widgetStyle=Breeze
+SingleClick=false
+
+[Icons]
+Theme=breeze-dark
+
+[WM]
+activeBackground=20,20,20
+activeForeground=216,232,232
+inactiveBackground=16,16,16
+inactiveForeground=122,130,130

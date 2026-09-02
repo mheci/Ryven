@@ -1,0 +1,18 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "Ryven"
+            }
+        ],
+        "Description": "Dark charcoal and pale cyan global theme",
+        "Id": "org.ryven.desktop",
+        "License": "CC-BY-SA-4.0",
+        "Name": "Ryven",
+        "Website": "https://github.com/mheci/Ryven"
+    },
+    "Keywords": "Desktop;Workspace;Appearance;Look and Feel;Ryven",
+    "X-KDE-ParentApp": "",
+    "X-KPackage-Dependencies": []
+}
