@@ -1,46 +1,33 @@
 ---
-name: Build container image
+# Reusable compose/push job. Callers are the public workflow records.
+name: Build image (reusable)
 on:
-  pull_request:
-    branches:
-      - main
-  schedule:
-    - cron: '0 6 * * 0'  # weekly Sunday 06:00 UTC
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - '**/README.md'
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      image:
+        required: true
+        type: string
+      containerfile:
+        required: true
+        type: string
+      cst:
+        required: true
+        type: string
+      publish:
+        description: Push/sign/attest (false on pull_request)
+        required: true
+        type: boolean
+    secrets:
+      SIGNING_SECRET:
+        required: false
 
 env:
-  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"  # do not edit
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
 
 jobs:
   build_push:
-    name: Build ${{ matrix.image }}
+    name: Build ${{ inputs.image }}
     runs-on: ubuntu-26.04
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ matrix.image }}
-      cancel-in-progress: false
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        include:
-          - image: ryven
-            containerfile: Containerfile
-            goss: ci/goss.yaml
-            cst: ci/container-structure-test.yaml
-          - image: ryven-wl
-            containerfile: Containerfile.wl
-            goss: ci/goss-wl.yaml
-            cst: ci/container-structure-test-wl.yaml
-          - image: ryven-sericea
-            containerfile: Containerfile.sericea
-            goss: ci/goss-sericea.yaml
-            cst: ci/container-structure-test-sericea.yaml
-
     permissions:
       contents: read
       packages: write
@@ -49,7 +36,6 @@ jobs:
       security-events: write
 
     steps:
-      # These stage versions are pinned by https://github.com/renovatebot/renovate
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -65,25 +51,20 @@ jobs:
           just check
 
       - name: Image Name
-        id: image-name
         run: |
-          echo "IMAGE_NAME=${{ matrix.image }}" >> $GITHUB_ENV
-          echo "CONTAINERFILE=${{ matrix.containerfile }}" >> $GITHUB_ENV
+          echo "IMAGE_NAME=${{ inputs.image }}" >> $GITHUB_ENV
+          echo "CONTAINERFILE=${{ inputs.containerfile }}" >> $GITHUB_ENV
 
       - name: Default Tag
-        id: gen-default-tag
         run: |
           DEFAULT_TAG=$(just generate-default-tag)
-
           echo "DEFAULT_TAG=${DEFAULT_TAG}" >> $GITHUB_ENV
 
       - name: Prepare environment
         run: |
-          # Lowercase the image uri https://github.com/macbre/push-to-ghcr/issues/12
           echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
 
-      # This actually builds the container image
       - name: Build Image
         id: build-image
         run: |
@@ -91,7 +72,6 @@ jobs:
             ${IMAGE_NAME} \
             ${DEFAULT_TAG}
 
-      # This is optional, this provides smaller delta updates
       - name: Rechunk with rpm-ostree
         id: rechunk
         run: |
@@ -99,29 +79,17 @@ jobs:
             ${IMAGE_NAME} \
             ${DEFAULT_TAG}
 
-      # If you are feeling adventurous, use the new distro agnostic rechunker
-      # https://github.com/coreos/chunkah
-      # You can delete the Rechunk with rpm-ostree portion then if you use this
-      #- name: Rechunk with Chunkah
-      #  id: rechunk
-      #  run: |
-      #    just rechunk \
-      #      ${IMAGE_NAME} \
-      #      ${DEFAULT_TAG}
-
       - name: Generate Build Tags
         id: gen-build-tags
         run: |
           alias_tags="$(just generate-build-tags \
                         ${IMAGE_NAME} \
                         ${DEFAULT_TAG})"
-
           echo "Tags for this Action..."
           echo "${alias_tags}"
           echo "alias_tags=${alias_tags}" >> $GITHUB_OUTPUT
 
       - name: Tag Image
-        id: tag-images
         env:
           ALIAS_TAGS: ${{ steps.gen-build-tags.outputs.alias_tags }}
         run: |
@@ -130,31 +98,11 @@ jobs:
             "${DEFAULT_TAG}" \
             "${ALIAS_TAGS}"
 
-      # bootc container lint also runs in the Containerfile. Repeat on the
-      # rechunked local image so ostree-rechunk cannot drop the check.
       - name: bootc container lint
         run: |
           set -euo pipefail
           podman run --rm --privileged --entrypoint bootc \
             "${IMAGE_NAME}:${DEFAULT_TAG}" container lint
-
-      - name: Goss
-        env:
-          GOSS_VER: v0.4.10
-        run: |
-          set -euo pipefail
-          ver="${GOSS_VER#v}"
-          curl -fsSL -o /tmp/goss.tgz \
-            "https://github.com/goss-org/goss/releases/download/${GOSS_VER}/goss_${ver}_linux_x86_64.tar.gz"
-          tar -xzf /tmp/goss.tgz -C /tmp
-          chmod +x /tmp/goss
-          test -x /tmp/goss
-          podman run --rm \
-            --entrypoint /bin/bash \
-            -v /tmp/goss:/goss:ro \
-            -v "${PWD}/${{ matrix.goss }}:/goss.yaml:ro" \
-            "${IMAGE_NAME}:${DEFAULT_TAG}" \
-            -c '/goss --gossfile /goss.yaml validate --format documentation'
 
       - name: Container Structure Test
         env:
@@ -167,10 +115,9 @@ jobs:
           tar_path="${RUNNER_TEMP}/ryven.tar"
           podman save -o "${tar_path}" "${IMAGE_NAME}:${DEFAULT_TAG}"
           /tmp/cst test --driver tar --image "${tar_path}" \
-            --config ${{ matrix.cst }}
+            --config ${{ inputs.cst }}
           rm -f "${tar_path}"
 
-      # Informational: Fedora/Kinoite base CVEs must not fail the image job.
       - name: Grype
         continue-on-error: true
         uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
@@ -187,20 +134,18 @@ jobs:
         uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: ${{ steps.grype.outputs.sarif }}
-          category: grype-${{ matrix.image }}
+          category: grype-${{ inputs.image }}
 
-      # These `if` statements are so that pull requests for your custom images do not make it publish any packages under your name without you knowing
-      # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work
       - name: Login to GitHub Container Registry
         uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        if: inputs.publish
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push To GHCR
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        if: inputs.publish
         id: push-image
         env:
           ALIAS_TAGS: ${{ steps.gen-build-tags.outputs.alias_tags }}
@@ -209,26 +154,17 @@ jobs:
           for tag in ${ALIAS_TAGS}; do
             podman push --digestfile=/tmp/digestfile ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
           done
-
           digest=$(< /tmp/digestfile)
-
           echo "digest=${digest}" >> $GITHUB_OUTPUT
 
-      # This section is optional and only needs to be enabled if you plan on distributing
-      # your project for others to consume. You will need to create a public and private key
-      # using Cosign and save the private key as a repository secret in Github for this workflow
-      # to consume. For more details, review the image signing section of the README.
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        if: inputs.publish
         with:
           cosign-release: 'v3.1.2'
 
-      # Key-based signature for ostree-image-signed / bootc consumers.
-      # Do not put secrets.* in `if:` — GitHub rejects the workflow at parse.
       - name: Sign image with Cosign key
-        id: sign-image-key
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        if: inputs.publish
         env:
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
@@ -238,22 +174,17 @@ jobs:
             echo 'SIGNING_SECRET unset; skipping static-key Cosign'
             exit 0
           fi
-          # rpm-ostree still wants the old bundle format for static keys.
           cosign sign -y --new-bundle-format=false --use-signing-config=false \
             --key env://COSIGN_PRIVATE_KEY \
             "${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}"
 
-      # Keyless Cosign via GitHub OIDC → Fulcio. id-token: write is required.
       - name: Sign image with Cosign OIDC
-        id: sign-image-oidc
-        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        if: inputs.publish
         env:
           DIGEST: ${{ steps.push-image.outputs.digest }}
         run: |
           cosign sign -y "${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}"
 
-      # SLSA provenance + GitHub Artifact Attestations (same predicate, GH store
-      # and optional registry attach).
       - name: Attest build provenance
         if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
@@ -261,4 +192,3 @@ jobs:
           subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           subject-digest: ${{ steps.push-image.outputs.digest }}
           push-to-registry: true
-

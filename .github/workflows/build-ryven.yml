@@ -1,0 +1,27 @@
+---
+# Independent workflow record. No concurrency group: GitHub cancels pending
+# jobs in a shared group with "higher priority waiting request" even when
+# cancel-in-progress is false. Separate files also keep publish isolated.
+name: Build ryven
+on:
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 6 * * 0'
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/README.md'
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: ./.github/workflows/_build-image.yml
+    with:
+      image: ryven
+      containerfile: Containerfile
+      cst: ci/container-structure-test.yaml
+      publish: ${{ github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
+    secrets: inherit
