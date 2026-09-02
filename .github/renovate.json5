@@ -38,6 +38,43 @@
       "packageNameTemplate": "ublue-os/kinoite-main",
       "autoReplaceStringTemplate": "FROM ghcr.io/ublue-os/kinoite-main:latest@{{{newDigest}}}",
     },
+    {
+      "customType": "regex",
+      "description": "OGC kernel OCI tag in build.sh",
+      "managerFilePatterns": ["/(^|/)build_files/build\\.sh$/"],
+      "matchStrings": [
+        "OGC_IMAGE='ghcr.io/opengamingcollective/kernel-packages-fedora:(?<currentValue>[^']+)'",
+      ],
+      "datasourceTemplate": "docker",
+      "registryUrlTemplate": "https://ghcr.io",
+      "depNameTemplate": "opengamingcollective/kernel-packages-fedora",
+      "packageNameTemplate": "opengamingcollective/kernel-packages-fedora",
+    },
+    {
+      "customType": "regex",
+      "description": "bootc-image-builder image in ryven.env",
+      "managerFilePatterns": ["/(^|/)ryven\\.env$/"],
+      "matchStrings": [
+        "BIB_IMAGE=\"(?<depName>quay.io/centos-bootc/bootc-image-builder):(?<currentValue>[^\"]+)\"",
+      ],
+      "datasourceTemplate": "docker",
+    },
+    {
+      "customType": "regex",
+      "description": "Goss release pin in build.yml",
+      "managerFilePatterns": ["/(^|/)\\.github/workflows/build\\.yml$/"],
+      "matchStrings": ["GOSS_VER: (?<currentValue>v[0-9.]+)"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "goss-org/goss",
+    },
+    {
+      "customType": "regex",
+      "description": "container-structure-test release pin in build.yml",
+      "managerFilePatterns": ["/(^|/)\\.github/workflows/build\\.yml$/"],
+      "matchStrings": ["CST_VER: (?<currentValue>v[0-9.]+)"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "GoogleContainerTools/container-structure-test",
+    },
   ],
 
   "packageRules": [

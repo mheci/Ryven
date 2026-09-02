@@ -1,0 +1,62 @@
+# Goss checks against the built bootc image. systemd is not PID 1; only files,
+# rpmdb, and unit wants/masks are valid. Keep in sync with build.sh invariants.
+file:
+  /usr/lib/bootc/kargs.d/00-nvidia.toml:
+    exists: true
+  /usr/lib/bootc/kargs.d/10-zswap.toml:
+    exists: true
+  /usr/lib/bootc/kargs.d/20-amd-zen.toml:
+    exists: true
+  /usr/lib/modprobe.d/nvidia-gaming.conf:
+    exists: true
+  /usr/lib/environment.d/50-ryven-shader-cache.conf:
+    exists: true
+  /usr/lib/environment.d/60-ryven-proton.conf:
+    exists: true
+    contains:
+      - PROTON_ENABLE_WAYLAND=1
+  /usr/bin/ujust:
+    exists: true
+    mode: "0755"
+  /usr/share/ryven/justfile:
+    exists: true
+  /usr/share/plasma/look-and-feel/org.ryven.desktop/metadata.json:
+    exists: true
+  /usr/lib/udev/rules.d/60-ryven-io-scheduler.rules:
+    exists: true
+  /usr/lib/udev/rules.d/40-ryven-ntsync.rules:
+    exists: true
+  /etc/yum.repos.d/terra-extras.repo:
+    exists: true
+  /usr/lib/systemd/system/ryven-flatpak-setup.service:
+    exists: true
+  /usr/lib/systemd/system-generators/ryven-bees-generator:
+    exists: true
+    mode: "0755"
+
+package:
+  firefox:
+    installed: true
+  ffmpeg:
+    installed: true
+  libva-nvidia-driver:
+    installed: true
+  greenboot:
+    installed: true
+  helium-browser-bin:
+    installed: true
+  gpu-screen-recorder:
+    installed: true
+  polychromatic:
+    installed: true
+
+command:
+  no-cardwire:
+    exec: rpm -q cardwire
+    exit-status: 1
+  no-docker:
+    exec: rpm -q docker
+    exit-status: 1
+  no-docker-ce:
+    exec: rpm -q docker-ce
+    exit-status: 1

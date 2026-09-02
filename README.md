@@ -42,3 +42,12 @@ CUDA, Docker/VMs, `terra-release-nvidia`, mesa-freeworld swap, cardwire, v4l2loo
 just build
 just ostree-rechunk
 ```
+
+## Verify
+
+```bash
+cosign verify --key cosign.pub ghcr.io/mheci/ryven:latest
+gh attestation verify oci://ghcr.io/mheci/ryven:latest --repo mheci/Ryven
+```
+
+CI: ShellCheck, shfmt, Hadolint, CodeQL (Actions), Goss, container-structure-test, `bootc container lint`, Grype (informational). Pushes to `main` sign with Cosign (OIDC keyless + optional `SIGNING_SECRET`) and attach SLSA provenance. Dependabot and Renovate bump Actions, Containerfile, and digest pins. Secret scanning and push protection are enabled on the GitHub repo.

@@ -1,0 +1,44 @@
+# Google container-structure-test. Driver in CI is tar (podman save) so this
+# does not require a Docker daemon. Commands run in a throwaway container
+# filesystem; do not expect systemd.
+schemaVersion: "2.0.0"
+fileExistenceTests:
+  - name: nvidia bootc kargs
+    path: /usr/lib/bootc/kargs.d/00-nvidia.toml
+    shouldExist: true
+  - name: zswap kargs
+    path: /usr/lib/bootc/kargs.d/10-zswap.toml
+    shouldExist: true
+  - name: amd zen kargs
+    path: /usr/lib/bootc/kargs.d/20-amd-zen.toml
+    shouldExist: true
+  - name: ryven look-and-feel
+    path: /usr/share/plasma/look-and-feel/org.ryven.desktop/metadata.json
+    shouldExist: true
+  - name: terra-extras repo
+    path: /etc/yum.repos.d/terra-extras.repo
+    shouldExist: true
+  - name: ujust
+    path: /usr/bin/ujust
+    shouldExist: true
+    isExecutableBy: owner
+commandTests:
+  - name: firefox rpm
+    command: rpm
+    args: ["-q", "firefox"]
+  - name: ffmpeg not ffmpeg-free
+    command: rpm
+    args: ["-q", "ffmpeg"]
+  - name: kdeglobals look-and-feel
+    command: grep
+    args: ["-q", "LookAndFeelPackage=org.ryven.desktop", "/etc/xdg/kdeglobals"]
+  - name: Inter default font
+    command: grep
+    args: ["-q", "font=Inter,", "/etc/xdg/kdeglobals"]
+  - name: Darkly widgetStyle
+    command: grep
+    args: ["-q", "widgetStyle=Darkly", "/etc/xdg/kdeglobals"]
+metadataTest:
+  labels:
+    - key: org.opencontainers.image.title
+      value: Ryven
