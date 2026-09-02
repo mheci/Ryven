@@ -8,7 +8,7 @@ cp -avf "/ctx/system_files"/. /
 
 # Package source priority (highest first):
 #   1. Official vendor/dev repos already on disk (Brave, mise, OpenRazer, …)
-#   2. Terra f44 (terra, terra-multimedia, terra-mesa)
+#   2. Terra f44 (terra, terra-extras, terra-multimedia, terra-mesa)
 #   3. RPM Fusion free/nonfree (+ updates)
 #   4. Fedora
 #
@@ -105,6 +105,7 @@ dnf5 -y install --nogpgcheck \
   terra-release
 
 dnf5 -y install --enablerepo=terra \
+  terra-release-extras \
   terra-release-mesa \
   terra-release-multimedia
 
