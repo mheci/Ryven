@@ -231,9 +231,16 @@ install_priority \
   kde-connect \
   wf-recorder \
   android-tools libimobiledevice
-install_any wl-clip-persist
-install_any greetd
-install_any tuigreet greetd-tuigreet
+# wl-clip-persist has no Fedora/Terra/Fusion NEVRA (2026-09-02). cliphist +
+# wl-clipboard still persist text/images while the source client lives.
+if ! install_any wl-clip-persist; then
+  echo 'wl-clip-persist unpublished; omitting' >&2
+  sed -i '/wl-clip-persist/d' /usr/share/hypr/hyprland.conf /etc/skel/.config/hypr/hyprland.conf 2>/dev/null || true
+fi
+if ! install_any greetd; then
+  die 'greetd missing'
+fi
+install_any tuigreet greetd-tuigreet || echo 'tuigreet unpublished; greetd still enabled' >&2
 
 if have_rpm zram-generator-defaults || have_rpm zram-generator; then
   dnf5 -y remove zram-generator-defaults zram-generator

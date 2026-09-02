@@ -189,18 +189,20 @@ if ! install_priority gpu-screen-recorder; then
 fi
 
 # Sway is on sericea-main. Refresh to latest Fedora/Terra/Fusion NEVRA.
-install_priority sway swaybg swayidle swaylock sway-config-fedora \
-  waybar wofi fuzzel \
-  xdg-desktop-portal-wlr xdg-desktop-portal-gtk
-have_rpm sway || die 'sway RPM missing on sericea-main overlay'
+for pkg in sway swaybg swayidle swaylock waybar wofi fuzzel \
+  xdg-desktop-portal-wlr xdg-desktop-portal-gtk; do
+  install_priority "${pkg}" || echo "No NEVRA for ${pkg}" >&2
+done
+have_rpm sway || die 'sway RPM missing on sericea overlay'
 
-install_priority \
-  wl-clipboard dunst grim slurp \
-  kde-connect \
-  wf-recorder \
-  android-tools libimobiledevice \
-  satty cliphist
-install_any wl-clip-persist
+for pkg in wl-clipboard dunst grim slurp kde-connect wf-recorder \
+  android-tools libimobiledevice satty cliphist; do
+  install_priority "${pkg}" || echo "No NEVRA for ${pkg}" >&2
+done
+if ! install_any wl-clip-persist; then
+  echo 'wl-clip-persist unpublished; omitting' >&2
+  sed -i '/wl-clip-persist/d' /usr/share/sway/config.d/50-ryven.conf /etc/sway/config.d/50-ryven.conf 2>/dev/null || true
+fi
 
 if have_rpm zram-generator-defaults || have_rpm zram-generator; then
   dnf5 -y remove zram-generator-defaults zram-generator

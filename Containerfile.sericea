@@ -8,7 +8,9 @@ FROM ghcr.io/ublue-os/akmods:ogc-44 AS akmods
 FROM ghcr.io/ublue-os/akmods-extra:ogc-44 AS akmods-extra
 FROM ghcr.io/ublue-os/akmods-nvidia-open:ogc-44 AS akmods-nvidia
 
-FROM ghcr.io/ublue-os/sericea-main:latest
+# ghcr.io/ublue-os/sericea-main:latest is unpublished (manifest unknown).
+# Fedora renamed Sericea to sway-atomic; F44 is the same product ublue wrapped.
+FROM quay.io/fedora-ostree-desktops/sway-atomic:44
 
 RUN rm /opt && mkdir /opt
 
