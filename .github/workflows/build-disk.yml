@@ -2,6 +2,9 @@
 name: Build disk images
 
 on:
+  schedule:
+    # Once per month: 05:17 UTC on the 1st. ISO only (no qcow2).
+    - cron: "17 5 1 * *"
   workflow_dispatch:
     inputs:
       upload-to-s3:
@@ -19,9 +22,9 @@ on:
     branches:
       - main
     paths:
-      - './disk_config/disk.toml'
-      - './disk_config/iso.toml'
-      - './.github/workflows/build-disk.yml'
+      - "./disk_config/disk.toml"
+      - "./disk_config/iso.toml"
+      - "./.github/workflows/build-disk.yml"
 
 env:
   IMAGE_NAME: ${{ github.event.repository.name }}
@@ -36,11 +39,11 @@ concurrency:
 jobs:
   build:
     name: Build disk images
-    runs-on: ${{ inputs.platform == 'amd64' && 'ubuntu-26.04' || 'ubuntu-26.04-arm' }}
+    runs-on: ${{ (github.event.inputs.platform || 'amd64') == 'arm64' && 'ubuntu-26.04-arm' || 'ubuntu-26.04' }}
     strategy:
       fail-fast: false
       matrix:
-        disk-type: ["qcow2", "anaconda-iso"]
+        disk-type: ${{ github.event_name == 'schedule' && fromJSON('["anaconda-iso"]') || fromJSON('["qcow2", "anaconda-iso"]') }}
     permissions:
       contents: read
       packages: read
@@ -57,24 +60,24 @@ jobs:
           echo "DISK_TYPE=${DISK_TYPE}" >> ${GITHUB_ENV}
           echo "USER_UID=${USER_UID}" >> ${GITHUB_ENV}
           echo "USER_GID=${USER_GID}" >> ${GITHUB_ENV}
-          echo "PLATFORM=${{ inputs.platform || 'amd64' }}" >> ${GITHUB_ENV}
+          echo "PLATFORM=${{ github.event.inputs.platform || 'amd64' }}" >> ${GITHUB_ENV}
           echo "STAMP=$(date -u -d '${{ github.run_started_at }}' +%Y%m%d)" >> ${GITHUB_ENV}
 
       - name: Install dependencies
-        if: inputs.platform == 'arm64'
+        if: (github.event.inputs.platform || 'amd64') == 'arm64'
         run: |
           set -x
           sudo apt update -y
           sudo apt install -y podman qemu-utils xz-utils
 
       - name: Maximize build space
-        if: inputs.platform != 'arm64'
+        if: (github.event.inputs.platform || 'amd64') != 'arm64'
         uses: ublue-os/remove-unwanted-software@cc0becac701cf642c8f0a6613bbdaf5dc36b259e # v9
         with:
           remove-codeql: true
 
       - name: Install qemu-img and xz
-        if: inputs.platform != 'arm64'
+        if: (github.event.inputs.platform || 'amd64') != 'arm64'
         run: |
           sudo apt-get update
           sudo apt-get install -y qemu-utils xz-utils
@@ -128,7 +131,7 @@ jobs:
           ls -lh "${DEST}"
 
       - name: Upload disk images and checksum
-        if: inputs.upload-to-s3 != true && github.event_name != 'pull_request'
+        if: github.event.inputs.upload-to-s3 != 'true' && github.event_name != 'pull_request'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ryven-${{ env.STAMP }}-${{ env.PLATFORM }}-${{ matrix.disk-type }}
@@ -139,7 +142,7 @@ jobs:
           overwrite: true
 
       - name: Upload to S3
-        if: inputs.upload-to-s3 == true && github.event_name != 'pull_request'
+        if: github.event.inputs.upload-to-s3 == 'true' && github.event_name != 'pull_request'
         shell: bash
         env:
           RCLONE_CONFIG_S3_TYPE: s3
