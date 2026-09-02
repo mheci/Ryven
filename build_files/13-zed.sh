@@ -1,6 +1,8 @@
 #!/bin/bash
-# Zed nightly from Terra f44 (Name: zed-nightly).
+# Zed: Terra zed-nightly, else zed.
 
 set -ouex pipefail
 
-dnf5 -y install --enablerepo=terra zed-nightly
+if ! dnf5 -y install --enablerepo=terra zed-nightly; then
+  dnf5 -y install --enablerepo=terra zed
+fi
