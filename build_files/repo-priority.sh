@@ -13,22 +13,30 @@ TERRA_REPOS="terra,terra-multimedia,terra-mesa"
 FUSION_REPOS="rpmfusion-free,rpmfusion-free-updates,rpmfusion-nonfree,rpmfusion-nonfree-updates"
 
 # install_priority [--official-repo=ID] PKG...
+# Each name is resolved independently so Terra-only and Fusion/Fedora-only
+# packages in one call do not fail the whole transaction.
 install_priority() {
   local official=()
+  local pkg
   while [[ ${1-} == --official-repo=* ]]; do
     official+=(--enablerepo="${1#--official-repo=}")
     shift
   done
-  if ((${#official[@]})) && dnf5 -y install "${official[@]}" "$@"; then
-    return 0
-  fi
-  if dnf5 -y install --enablerepo="${TERRA_REPOS}" "$@"; then
-    return 0
-  fi
-  if dnf5 -y install --enablerepo="${FUSION_REPOS}" "$@"; then
-    return 0
-  fi
-  dnf5 -y install "$@"
+  for pkg in "$@"; do
+    if rpm -q "${pkg}" >/dev/null 2>&1; then
+      continue
+    fi
+    if ((${#official[@]})) && dnf5 -y install "${official[@]}" "${pkg}"; then
+      continue
+    fi
+    if dnf5 -y install --enablerepo="${TERRA_REPOS}" "${pkg}"; then
+      continue
+    fi
+    if dnf5 -y install --enablerepo="${FUSION_REPOS}" "${pkg}"; then
+      continue
+    fi
+    dnf5 -y install "${pkg}"
+  done
 }
 
 # Try each name in order until one installs.
