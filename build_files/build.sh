@@ -269,8 +269,8 @@ disable_yum_repos /etc/yum.repos.d/rpmfusion*.repo /etc/yum.repos.d/*terra*.repo
 stub_kernel_install_hooks
 dnf5 -y install jq skopeo
 extract_ogc_kernel /tmp/kernel-rpms
-compgen -G '/tmp/kernel-rpms/kernel-core-*.rpm' >/dev/null \
-  || die 'OGC kernel-core RPM missing under /tmp/kernel-rpms'
+compgen -G '/tmp/kernel-rpms/kernel-core-*.rpm' >/dev/null ||
+  die 'OGC kernel-core RPM missing under /tmp/kernel-rpms'
 
 # Erase Fedora/ublue kernel Names (nodeps: we immediately install OGC). Wipe
 # /usr/lib/modules so leftover .ko from the old kver cannot confuse depmod.
@@ -337,8 +337,8 @@ fi
 # nvidia-vars is written by ublue's akmods-nvidia-open:ogc-44 image; absence
 # means the Containerfile COPY --from= that stage was dropped or empty.
 AKMODNV_PATH=/tmp/akmods-nvidia-rpms
-[[ -f ${AKMODNV_PATH}/kmods/nvidia-vars ]] \
-  || die "akmods-nvidia-open:ogc-44 missing ${AKMODNV_PATH}/kmods/nvidia-vars"
+[[ -f ${AKMODNV_PATH}/kmods/nvidia-vars ]] ||
+  die "akmods-nvidia-open:ogc-44 missing ${AKMODNV_PATH}/kmods/nvidia-vars"
 
 # ublue ships nvidia-install.sh; it expects IMAGE_NAME and AKMODNV_PATH in
 # the environment. MULTILIB=1 pulls i686 NVIDIA userspace for Steam/Proton.
@@ -468,8 +468,8 @@ ln -sfn /etc/scx_loader.toml /etc/scx_loader/config.toml
 if [[ ! -f /etc/default/scx ]]; then
   printf 'SCX_SCHEDULER=scx_lavd\nSCX_FLAGS=--performance\n' >/etc/default/scx
 fi
-[[ -f /usr/lib/systemd/system/scx_loader.service ]] \
-  || die 'scx-tools did not ship scx_loader.service'
+[[ -f /usr/lib/systemd/system/scx_loader.service ]] ||
+  die 'scx-tools did not ship scx_loader.service'
 systemctl enable scx_loader.service
 
 install_priority faugus-launcher

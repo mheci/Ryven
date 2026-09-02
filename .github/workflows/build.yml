@@ -115,6 +115,61 @@ jobs:
             "${DEFAULT_TAG}" \
             "${ALIAS_TAGS}"
 
+      # bootc container lint also runs in the Containerfile. Repeat on the
+      # rechunked local image so ostree-rechunk cannot drop the check.
+      - name: bootc container lint
+        run: |
+          set -euo pipefail
+          podman run --rm --privileged --entrypoint bootc \
+            "${IMAGE_NAME}:${DEFAULT_TAG}" container lint
+
+      - name: Goss
+        env:
+          GOSS_VER: v0.4.10
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/goss \
+            "https://github.com/goss-org/goss/releases/download/${GOSS_VER}/goss-linux-amd64"
+          chmod +x /tmp/goss
+          podman run --rm \
+            --entrypoint /bin/bash \
+            -v /tmp/goss:/goss:ro \
+            -v "${PWD}/ci/goss.yaml:/goss.yaml:ro" \
+            "${IMAGE_NAME}:${DEFAULT_TAG}" \
+            -c '/goss --gossfile /goss.yaml validate --format documentation'
+
+      - name: Container Structure Test
+        env:
+          CST_VER: v1.22.1
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/cst \
+            "https://github.com/GoogleContainerTools/container-structure-test/releases/download/${CST_VER}/container-structure-test-linux-amd64"
+          chmod +x /tmp/cst
+          podman save -o /tmp/ryven.tar "${IMAGE_NAME}:${DEFAULT_TAG}"
+          /tmp/cst test --driver tar --image /tmp/ryven.tar \
+            --config ci/container-structure-test.yaml
+          rm -f /tmp/ryven.tar
+
+      # Informational: Fedora/Kinoite base CVEs must not fail the image job.
+      - name: Grype
+        continue-on-error: true
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+        id: grype
+        with:
+          image: "${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}"
+          fail-build: false
+          severity-cutoff: critical
+          output-format: sarif
+
+      - name: Upload Grype SARIF
+        if: always() && hashFiles(steps.grype.outputs.sarif) != ''
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+          category: grype
+
       # These `if` statements are so that pull requests for your custom images do not make it publish any packages under your name without you knowing
       # They also check if the runner is on the default branch so that things like the merge queue (if you enable it), are going to work
       - name: Login to GitHub Container Registry
@@ -150,19 +205,20 @@ jobs:
         with:
           cosign-release: 'v3.1.2'
 
-      # Key-based signature for ostree-image-signed / bootc consumers. Optional
-      # if SIGNING_SECRET is unset; keyless Sigstore still runs.
+      # Key-based signature for ostree-image-signed / bootc consumers.
+      # Do not put secrets.* in `if:` — GitHub rejects the workflow at parse.
       - name: Sign image with Cosign key
         id: sign-image-key
-        if: >-
-          github.event_name != 'pull_request' &&
-          github.ref == format('refs/heads/{0}', github.event.repository.default_branch) &&
-          secrets.SIGNING_SECRET != ''
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         env:
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
           DIGEST: ${{ steps.push-image.outputs.digest }}
         run: |
+          if [[ -z ${COSIGN_PRIVATE_KEY} ]]; then
+            echo 'SIGNING_SECRET unset; skipping static-key Cosign'
+            exit 0
+          fi
           # rpm-ostree still wants the old bundle format for static keys.
           cosign sign -y --new-bundle-format=false --use-signing-config=false \
             --key env://COSIGN_PRIVATE_KEY \
