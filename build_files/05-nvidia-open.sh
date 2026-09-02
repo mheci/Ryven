@@ -47,7 +47,7 @@ fi
 
 EXTRA=(/tmp/akmods-extra-src/rpms/kmods/kmod-*ryzen*smu*.rpm /tmp/akmods-extra-src/rpms/extra/kmod-*ryzen*smu*.rpm /tmp/akmods-extra-src/rpms/kmods/kmod-*zenergy*.rpm /tmp/akmods-extra-src/rpms/extra/kmod-*zenergy*.rpm)
 if ((${#EXTRA[@]})); then
-  dnf5 -y install "${EXTRA[@]}"
+  rpm --install --nodeps "${EXTRA[@]}"
 fi
 
 INSTALL_SH=$(find /tmp/akmods-nvidia-src -name nvidia-install.sh -type f -print -quit)
