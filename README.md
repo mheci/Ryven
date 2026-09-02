@@ -17,7 +17,7 @@
 | Image | `ghcr.io/mheci/ryven:latest` |
 | Base | `ghcr.io/ublue-os/kinoite-main` (Fedora **44** KDE) |
 | Login | Plasma Login Manager (`plasmalogin`), not SDDM |
-| GPU | ublue `akmods-nvidia-open` + OGC kernel |
+| GPU | ublue `akmods` / `akmods-extra` / `akmods-nvidia-open` (`ogc-44`) + OGC `kernel-packages-fedora:latest-fc44` |
 | Memory | **zswap on**, **zram off** |
 | Default look | `org.ryven.desktop`, Darkly, Breeze icons, Inter Regular, wallpaper **10** |
 | ISO | weekly, after the scheduled OCI build, `ghcr.io/mheci/ryven:latest` |
