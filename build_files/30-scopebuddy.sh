@@ -1,5 +1,5 @@
 #!/bin/bash
-# ScopeBuddy (Terra Name: ScopeBuddy). Gamescope is terra-gamescope in 38.
+# ScopeBuddy (Terra Name: ScopeBuddy).
 
 set -ouex pipefail
 

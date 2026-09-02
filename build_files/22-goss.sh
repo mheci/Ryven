@@ -59,6 +59,9 @@ check "bees generator" test -x /usr/lib/systemd/system-generators/ryven-bees-gen
 check "greenboot redboot-auto-reboot" bash -c '[[ $(systemctl is-enabled redboot-auto-reboot.service) == enabled ]]'
 check "proton-cachyos vdf" bash -c 'find /usr/share/steam/compatibilitytools.d -name compatibilitytool.vdf | grep -q .'
 check "terra-gamescope" rpm -q terra-gamescope
+check "helium-browser-bin" rpm -q helium-browser-bin
+check "gpu-screen-recorder" rpm -q gpu-screen-recorder
+check "polychromatic" rpm -q polychromatic
 check "docker group empty or absent" bash -c '
   if getent group docker >/dev/null; then
     members=$(getent group docker | cut -d: -f4)

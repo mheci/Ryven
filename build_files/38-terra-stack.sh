@@ -1,7 +1,6 @@
 #!/bin/bash
-# Terra f44 names verified against terrapkg/packages branch f44.
-# Nightlies: t3code-nightly, ghostty-tip. No cardwire. No gpu-screen-recorder (not in f44).
-# helium-browser-bin is not a Terra f44 Name.
+# Terra stack. Nightlies: t3code-nightly, ghostty-tip. No cardwire.
+# gpu-screen-recorder: Terra, else COPR brycensranch/gpu-screen-recorder-git.
 
 set -ouex pipefail
 
@@ -27,6 +26,12 @@ dnf5 -y install "${TERRA[@]}" \
   extest \
   vicinae \
   espanso-wayland
+
+if ! dnf5 -y install "${TERRA[@]}" gpu-screen-recorder; then
+  # shellcheck source=copr-helpers.sh
+  source /ctx/copr-helpers.sh
+  copr_install_isolated "brycensranch/gpu-screen-recorder-git" gpu-screen-recorder
+fi
 
 dnf5 -y install "${TERRA[@]}" \
   bibata-cursor-theme \
