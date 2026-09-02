@@ -35,8 +35,13 @@ install_priority() {
     if dnf5 -y install --enablerepo="${FUSION_REPOS}" "${pkg}"; then
       continue
     fi
-    dnf5 -y install "${pkg}"
+    if dnf5 -y install "${pkg}"; then
+      continue
+    fi
+    echo "No NEVRA for ${pkg} in official/Terra/Fusion/Fedora" >&2
+    return 1
   done
+  return 0
 }
 
 # Try each name in order until one installs.

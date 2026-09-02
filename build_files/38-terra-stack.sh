@@ -13,7 +13,6 @@ install_priority \
   t3code \
   heroic-games-launcher \
   protonplus \
-  terra-gamescope \
   vulkan-low-latency-layer \
   ananicy-cpp \
   cachyos-ananicy-rules \
@@ -21,6 +20,12 @@ install_priority \
   bpftune-gaming \
   lact \
   darkly
+
+# Name: terra-gamescope on terrapkg f44. Not in terra44 / terra44-multimedia /
+# terra44-mesa primary metadata (2026-09-02). Do not install Fedora gamescope.
+if ! install_priority terra-gamescope; then
+  echo "terra-gamescope unpublished on Terra f44 repos; compositor omitted" >&2
+fi
 
 install_priority \
   opencode-cli \
