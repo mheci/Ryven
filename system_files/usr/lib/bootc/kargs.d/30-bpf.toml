@@ -1,0 +1,2 @@
+# BPF LSM for Cardwire. Keep SELinux; append bpf last.
+kargs = ["lsm=landlock,lockdown,yama,integrity,selinux,bpf"]

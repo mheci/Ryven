@@ -35,6 +35,13 @@ check "ffmpeg rpm" rpm -q ffmpeg
 check "libva-nvidia-driver" rpm -q libva-nvidia-driver
 check "zram generator disabled" bash -c '! systemctl is-enabled systemd-zram-setup@zram0.service 2>/dev/null | grep -qx enabled'
 check "no firefox flatpak" bash -c '! command -v flatpak >/dev/null || ! flatpak info --system org.mozilla.firefox >/dev/null 2>&1'
+check "ryven look-and-feel" test -f /usr/share/plasma/look-and-feel/org.ryven.desktop/metadata.json
+check "ryven color scheme" test -f /usr/share/color-schemes/Ryven.colors
+check "ryven wallpaper" test -f /usr/share/wallpapers/Ryven/contents/images/3840x2160.png
+check "ryven kdeglobals" grep -q 'LookAndFeelPackage=org.ryven.desktop' /etc/xdg/kdeglobals
+check "plasmalogin enabled" bash -c '[[ $(systemctl is-enabled plasmalogin.service) == enabled ]]'
+check "sddm not enabled" bash -c 's=$(systemctl is-enabled sddm.service 2>/dev/null || true); [[ $s != enabled ]]'
+check "kyber udev" test -f /usr/lib/udev/rules.d/60-ryven-kyber.rules
 check "docker group empty or absent" bash -c '
   if getent group docker >/dev/null; then
     members=$(getent group docker | cut -d: -f4)
