@@ -1,6 +1,5 @@
 #!/bin/bash
-# Build-time image invariants (Goss spec + equivalent checks).
-# No GPU; systemd is not PID 1. Fail the image if a check fails.
+# Build-time image invariants. No GPU; systemd is not PID 1.
 
 set -ouex pipefail
 
@@ -39,16 +38,27 @@ check "ryven look-and-feel" test -f /usr/share/plasma/look-and-feel/org.ryven.de
 check "ryven color scheme" test -f /usr/share/color-schemes/Ryven.colors
 check "ryven wallpaper" test -f /usr/share/wallpapers/Ryven/contents/images/3840x2160.png
 check "ryven kdeglobals" grep -q 'LookAndFeelPackage=org.ryven.desktop' /etc/xdg/kdeglobals
+check "inter font default" grep -q 'font=Inter,' /etc/xdg/kdeglobals
+check "darkly widgetStyle" grep -q 'widgetStyle=Darkly' /etc/xdg/kdeglobals
 check "plasmalogin enabled" bash -c '[[ $(systemctl is-enabled plasmalogin.service) == enabled ]]'
 check "sddm not enabled" bash -c 's=$(systemctl is-enabled sddm.service 2>/dev/null || true); [[ $s != enabled ]]'
-check "kyber udev" test -f /usr/lib/udev/rules.d/60-ryven-kyber.rules
+check "io scheduler udev" test -f /usr/lib/udev/rules.d/60-ryven-io-scheduler.rules
 check "ntsync udev" test -f /usr/lib/udev/rules.d/40-ryven-ntsync.rules
 check "ntsync modules-load" test -f /usr/lib/modules-load.d/ntsync.conf
 check "desktop sysctl" test -f /usr/lib/sysctl.d/70-ryven-desktop.conf
 check "scx default lavd" grep -q 'SCX_SCHEDULER=scx_lavd' /etc/default/scx
+check "scx_loader.toml" grep -q 'default_sched = "scx_lavd"' /etc/scx_loader.toml
+check "scx_loader enabled" bash -c '[[ $(systemctl is-enabled scx_loader.service) == enabled ]]'
 check "ananicy-cpp enabled" bash -c '[[ $(systemctl is-enabled ananicy-cpp.service) == enabled ]]'
 check "bpftune enabled" bash -c '[[ $(systemctl is-enabled bpftune.service) == enabled ]]'
+check "no cardwire" bash -c '! rpm -q cardwire >/dev/null 2>&1'
+check "proton wayland" grep -q 'PROTON_ENABLE_WAYLAND=1' /usr/lib/environment.d/60-ryven-proton.conf
+check "no WINEFSYNC" bash -c '! grep -q WINEFSYNC /usr/lib/environment.d/60-ryven-proton.conf'
+check "flatpak first-boot unit" test -f /usr/lib/systemd/system/ryven-flatpak-setup.service
+check "bees generator" test -x /usr/lib/systemd/system-generators/ryven-bees-generator
+check "greenboot redboot-auto-reboot" bash -c '[[ $(systemctl is-enabled redboot-auto-reboot.service) == enabled ]]'
 check "proton-cachyos vdf" bash -c 'find /usr/share/steam/compatibilitytools.d -name compatibilitytool.vdf | grep -q .'
+check "terra-gamescope" rpm -q terra-gamescope
 check "docker group empty or absent" bash -c '
   if getent group docker >/dev/null; then
     members=$(getent group docker | cut -d: -f4)

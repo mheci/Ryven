@@ -19,10 +19,8 @@
 | Login | Plasma Login Manager (`plasmalogin`), not SDDM |
 | GPU | ublue `akmods-nvidia-open` + OGC kernel |
 | Memory | **zswap on**, **zram off** |
-| Default look | `org.ryven.desktop` + wallpaper **10** |
-| ISO | monthly `ryven-YYYYMMDD-amd64.iso` (Actions artifact) |
-
-This sandbox cannot boot the OCI image (no VM). The preview above is the Ryven theme (logo 10 / wallpaper palette), not a live `bootc` session.
+| Default look | `org.ryven.desktop`, Darkly, Breeze icons, Inter Regular, wallpaper **10** |
+| ISO | weekly, after the scheduled OCI build, `ghcr.io/mheci/ryven:latest` |
 
 ## Switch
 
@@ -31,43 +29,26 @@ sudo bootc switch ghcr.io/mheci/ryven:latest
 sudo bootc upgrade          # stage only — do not pass --apply
 ```
 
-Daily CI rebuilds GHCR. Monthly ISO is `17 5 1 * *` UTC. Hosts never auto-reboot.
+Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled image. Hosts never auto-reboot on updates. greenboot `redboot-auto-reboot` stays enabled.
 
 ## Desktop and games
 
-- NVIDIA VA-API: `libva-nvidia-driver` x86_64 + i686 (`NVD_BACKEND=direct`, no global `LIBVA_DRIVER_NAME`)
+- NVIDIA VA-API: `libva-nvidia-driver` x86_64 + i686 (`NVD_BACKEND=direct`)
 - 10 GiB shader caches
-- Steam RPM, **proton-cachyos** (SLR) under `/usr/share/steam/compatibilitytools.d`, **NTSync** (`/dev/ntsync` mode 0666 + `uaccess`)
+- Steam RPM, **proton-cachyos** (SLR), NTSync 0666, Proton Wayland + HDR
 - `terra-gamescope`, ScopeBuddy (`scb`), MangoHud, Heroic, ProtonPlus
-- **scx-scheds-nightly** with **`scx_lavd` enabled** (`/etc/default/scx`)
-- **bpftune-gaming** and **ananicy-cpp** + CachyOS rules, enabled
-- Cardwire (`cardwired`), bees on Proton `compatdata`, Kyber I/O
-- **mpv-nightly**, Terra ffmpeg/GStreamer, ffmpegthumbnailer
-- **t3code-nightly**, Zed, Ghostty, mise/bun/deno
+- **scx-scheds-nightly** + **scx-tools-nightly** / `scx_loader` with lavd `--performance`
+- **bpftune-gaming** and **ananicy-cpp** + CachyOS rules
+- beesd@UUID on host btrfs, NVMe kyber / HDD bfq
+- **mpv-nightly**, Terra ffmpeg, **t3code-nightly**, zed-nightly, ghostty-tip
 - uupd + topgrade (no auto-reboot)
-- System Flatpaks only: Flatseal, Warehouse, Gear Lever, Bazaar
+- First-boot Flatpaks on `/var`: Flatseal, Warehouse, Gear Lever, Bazaar
 
-`ujust` : `secure-boot-enroll`, `tpm-luks-unlock`, `scx-select`. Reboot only with `reboot=1`.
-
-## CachyOS settings we took
-
-High `vm.max_map_count`, dirty-byte caps, `split_lock_mitigate=0`, HPET in `audio`, NTSync udev, proton-cachyos, ananicy rules, scx_lavd.
-
-We did **not** take Cachy zram, `vm.swappiness=100`, or NVIDIA runtime PM (stutter risk on a desktop where power is irrelevant).
+`ujust`: `secure-boot-enroll`, `tpm-luks-unlock`, `scx-select`. Reboot only with `reboot=1`.
 
 ## Not in the image
 
-CUDA, Docker/VMs, `terra-release-nvidia`, mesa-freeworld swap, `ffmpegthumbs`, Game Mode / Decky, `uutils-coreutils-replace`, other DEs, `curl | sh`.
-
-## Layout
-
-| Path | Role |
-| --- | --- |
-| `Containerfile` | `FROM kinoite-main` + `build.sh` |
-| `build_files/` | Numbered assemble scripts |
-| `system_files/` | Overlay into `/` |
-| `disk_config/` | Anaconda kickstart / disk |
-| `docs/` | Logo and README art |
+CUDA, Docker/VMs, `terra-release-nvidia`, mesa-freeworld swap, cardwire, v4l2loopback, `curl | sh`.
 
 ```bash
 just build

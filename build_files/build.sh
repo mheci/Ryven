@@ -26,7 +26,6 @@ cp -avf "/ctx/system_files"/. /
 /ctx/18-firefox.sh
 /ctx/19-zen.sh
 /ctx/20-brave.sh
-/ctx/21-helium.sh
 /ctx/23-codecs.sh
 /ctx/24-zram-off.sh
 /ctx/25-plasma-login.sh
@@ -35,7 +34,6 @@ cp -avf "/ctx/system_files"/. /
 /ctx/28-fonts.sh
 /ctx/29-branding.sh
 /ctx/30-scopebuddy.sh
-/ctx/31-cardwire.sh
 /ctx/32-bees.sh
 /ctx/33-openrazer.sh
 /ctx/34-mangohud.sh
@@ -45,20 +43,5 @@ cp -avf "/ctx/system_files"/. /
 /ctx/38-terra-stack.sh
 /ctx/39-proton-cachyos.sh
 /ctx/22-goss.sh
-
-### Install packages
-
-# Packages can be installed from any enabled yum repo on the image.
-# List of rpmfusion packages can be found here:
-# https://mirrors.rpmfusion.org/mirrorlist?path=free/fedora/updates/44/x86_64/repoview/index.html&protocol=https&redirect=1
-
-# Use a COPR Example:
-#
-# dnf5 -y copr enable ublue-os/staging
-# dnf5 -y install package
-# Disable COPRs so they don't end up enabled on the final image:
-# dnf5 -y copr disable ublue-os/staging
-
-#### Example for enabling a System Unit File
 
 systemctl enable podman.socket

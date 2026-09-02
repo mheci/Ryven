@@ -1,32 +1,8 @@
 #!/bin/bash
-# OGC kernel + nvidia-open kmods from ublue akmods (not NVIDIA CUDA repo).
-# Tags: ghcr.io/ublue-os/akmods:ogc-44 and akmods-nvidia-open:ogc-44.
+# OGC kernel + nvidia-open kmods from ublue akmods bind-mounts (Containerfile COPY --from).
+# No kernel versionlock. No v4l2loopback.
 
 set -ouex pipefail
-
-FEDORA_RELEASE="$(rpm -E %fedora)"
-AKMODS_FLAVOR=ogc
-AKMODS_TAG="${AKMODS_FLAVOR}-${FEDORA_RELEASE}"
-
-extract_akmods() {
-  local image=$1
-  local dest=$2
-  rm -rf "${dest}" /tmp/akmods-oci /tmp/rpms /tmp/kernel-rpms
-  mkdir -p /tmp/akmods-oci "${dest}"
-  skopeo copy --retry-times 3 "docker://${image}" dir:/tmp/akmods-oci
-  local layer
-  layer=$(jq -r '.layers[-1].digest' </tmp/akmods-oci/manifest.json | cut -d: -f2)
-  tar -xzf /tmp/akmods-oci/"${layer}" -C /tmp/
-  if [[ -d /tmp/rpms ]]; then
-    cp -a /tmp/rpms/. "${dest}/"
-  fi
-  if [[ -d /tmp/kernel-rpms ]]; then
-    mkdir -p "${dest}/kernel-rpms"
-    cp -a /tmp/kernel-rpms/. "${dest}/kernel-rpms/"
-  fi
-}
-
-dnf5 -y install skopeo jq
 
 # Bypass kernel-install hooks that expect a booted ostree (Bazzite pattern).
 if [[ -d /usr/lib/kernel/install.d ]]; then
@@ -41,49 +17,48 @@ if [[ -d /usr/lib/kernel/install.d ]]; then
   popd >/dev/null
 fi
 
-extract_akmods "ghcr.io/ublue-os/akmods:${AKMODS_TAG}" /tmp/akmods-ogc
-
-# Replace Fedora/ublue-main kernel with OGC kernel RPMs from the akmods image.
-if compgen -G "/tmp/akmods-ogc/kernel-rpms/kernel-core-*.rpm" >/dev/null; then
-  for pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra kernel-tools kernel-tools-libs; do
-    rpm --erase "${pkg}" --nodeps || true
-  done
-  dnf5 -y install \
-    /tmp/akmods-ogc/kernel-rpms/kernel-[0-9]*.rpm \
-    /tmp/akmods-ogc/kernel-rpms/kernel-core-*.rpm \
-    /tmp/akmods-ogc/kernel-rpms/kernel-modules-*.rpm \
-    /tmp/akmods-ogc/kernel-rpms/kernel-devel-*.rpm || \
-  dnf5 -y install /tmp/akmods-ogc/kernel-rpms/kernel-*.rpm
+if ! compgen -G "/tmp/kernel-rpms/kernel-core-*.rpm" >/dev/null; then
+  echo "OGC kernel RPMs missing under /tmp/kernel-rpms" >&2
+  ls -la /tmp/kernel-rpms >&2 || true
+  exit 1
 fi
+
+for pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra kernel-tools kernel-tools-libs; do
+  if rpm -q "${pkg}" >/dev/null 2>&1; then
+    rpm --erase "${pkg}" --nodeps
+  fi
+done
+rm -rf /usr/lib/modules/*
+
+dnf5 -y install /tmp/kernel-rpms/kernel*.rpm
 
 KVER=$(rpm -q kernel-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -n1)
 
-# Common signed kmods that are useful on a gaming desktop.
-dnf5 -y install /tmp/akmods-ogc/ublue-os/ublue-os-akmods*.rpm || true
+if compgen -G "/tmp/akmods-rpms/ublue-os/ublue-os-akmods*.rpm" >/dev/null; then
+  dnf5 -y install /tmp/akmods-rpms/ublue-os/ublue-os-akmods*.rpm
+fi
+
 shopt -s nullglob
-COMMON=(/tmp/akmods-ogc/kmods/*v4l2loopback*.rpm /tmp/akmods-ogc/kmods/*xone*.rpm /tmp/akmods-ogc/kmods/*xpadneo*.rpm /tmp/akmods-ogc/kmods/*openrazer*.rpm)
+COMMON=(/tmp/akmods-rpms/kmods/*xone*.rpm /tmp/akmods-rpms/kmods/*xpadneo*.rpm /tmp/akmods-rpms/kmods/*openrazer*.rpm)
 if ((${#COMMON[@]})); then
-  dnf5 -y install "${COMMON[@]}" || true
+  dnf5 -y install "${COMMON[@]}"
 fi
 
-extract_akmods "ghcr.io/ublue-os/akmods-extra:${AKMODS_TAG}" /tmp/akmods-extra || true
-EXTRA=(/tmp/akmods-extra/kmods/*ryzen*smu*.rpm /tmp/akmods-extra/kmods/*zenergy*.rpm)
+EXTRA=(/tmp/akmods-extra-src/rpms/kmods/*ryzen*smu*.rpm /tmp/akmods-extra-src/rpms/extra/*ryzen*smu*.rpm /tmp/akmods-extra-src/rpms/kmods/*zenergy*.rpm /tmp/akmods-extra-src/rpms/extra/*zenergy*.rpm)
 if ((${#EXTRA[@]})); then
-  dnf5 -y install "${EXTRA[@]}" || true
+  dnf5 -y install "${EXTRA[@]}"
 fi
 
-extract_akmods "ghcr.io/ublue-os/akmods-nvidia-open:${AKMODS_TAG}" /tmp/akmods-nvidia-rpms
-
-INSTALL_SH=$(find /tmp/akmods-nvidia-rpms -name nvidia-install.sh -type f -print -quit)
+INSTALL_SH=$(find /tmp/akmods-nvidia-src -name nvidia-install.sh -type f -print -quit)
 if [[ -z ${INSTALL_SH} ]]; then
-  echo "ublue nvidia-install.sh missing from akmods-nvidia-open:${AKMODS_TAG}" >&2
-  find /tmp/akmods-nvidia-rpms -type f | head -80 >&2
+  echo "ublue nvidia-install.sh missing from akmods-nvidia-open:ogc-44" >&2
+  find /tmp/akmods-nvidia-src -type f | head -80 >&2
   exit 1
 fi
 
 AKMODNV_PATH=$(dirname "$(dirname "${INSTALL_SH}")")
-if [[ -d /tmp/akmods-nvidia-rpms/ublue-os ]]; then
-  AKMODNV_PATH=/tmp/akmods-nvidia-rpms
+if [[ -d /tmp/akmods-nvidia-src/rpms ]]; then
+  AKMODNV_PATH=/tmp/akmods-nvidia-src
 fi
 
 IMAGE_NAME=ryven AKMODNV_PATH="${AKMODNV_PATH}" MULTILIB=1 \

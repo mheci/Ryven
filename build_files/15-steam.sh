@@ -1,6 +1,8 @@
 #!/bin/bash
-# Steam native RPM from RPM Fusion nonfree (Fedora 44).
+# Steam: Terra Name: steam, then RPM Fusion nonfree.
 
 set -ouex pipefail
 
-dnf5 -y install --enablerepo=rpmfusion-nonfree steam
+if ! dnf5 -y install --enablerepo=terra steam; then
+  dnf5 -y install --enablerepo=rpmfusion-nonfree steam
+fi

@@ -1,14 +1,14 @@
 #!/bin/bash
-# Terra apps, games, tuners, themes.
-# Nightlies: t3code-nightly (mpv/scx are in 14/16).
-# Enable bpftune-gaming and ananicy-cpp with CachyOS rules.
+# Terra f44 names verified against terrapkg/packages branch f44.
+# Nightlies: t3code-nightly, ghostty-tip. No cardwire. No gpu-screen-recorder (not in f44).
+# helium-browser-bin is not a Terra f44 Name.
 
 set -ouex pipefail
 
 TERRA=(--enablerepo=terra,terra-multimedia)
 
 dnf5 -y install "${TERRA[@]}" \
-  ghostty \
+  ghostty-tip \
   t3code-nightly \
   heroic-games-launcher \
   protonplus \
@@ -18,15 +18,15 @@ dnf5 -y install "${TERRA[@]}" \
   cachyos-ananicy-rules \
   android-udev-rules \
   bpftune-gaming \
-  lact
+  lact \
+  darkly
 
 dnf5 -y install "${TERRA[@]}" \
   opencode-cli \
   rpcs3 \
   extest \
   vicinae \
-  espanso-wayland \
-  gpu-screen-recorder
+  espanso-wayland
 
 dnf5 -y install "${TERRA[@]}" \
   bibata-cursor-theme \

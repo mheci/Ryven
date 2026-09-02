@@ -2,9 +2,9 @@
 name: Build disk images
 
 on:
-  schedule:
-    # Once per month: 05:17 UTC on the 1st. ISO only (no qcow2).
-    - cron: "17 5 1 * *"
+  workflow_run:
+    workflows: ["Build container image"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       upload-to-s3:
@@ -34,7 +34,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

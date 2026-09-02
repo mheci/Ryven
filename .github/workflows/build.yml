@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '05 10 * * *'  # 10:05am UTC everyday
+    - cron: '0 6 * * 0'  # weekly Sunday 06:00 UTC
   push:
     branches:
       - main
@@ -18,7 +18,7 @@ env:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}-${{ inputs.brand_name}}-${{ inputs.stream_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build_push:

@@ -1,12 +1,17 @@
 [kdeglobals][KDE]
 LookAndFeelPackage=org.ryven.desktop
-widgetStyle=Breeze
+widgetStyle=Darkly
 
 [kdeglobals][General]
 ColorScheme=Ryven
 Name=Ryven
 TerminalApplication=konsole
 TerminalService=org.kde.konsole.desktop
+font=Inter,10,-1,5,400,0,0,0,0,0,Regular
+fixed=JetBrains Mono,10,-1,5,50,0,0,0,0,0
+menuFont=Inter,10,-1,5,400,0,0,0,0,0,Regular
+smallestReadableFont=Inter,8,-1,5,400,0,0,0,0,0,Regular
+toolBarFont=Inter,10,-1,5,400,0,0,0,0,0,Regular
 
 [kdeglobals][Icons]
 Theme=breeze-dark
@@ -18,8 +23,8 @@ name=default
 cursorTheme=breeze_cursors
 
 [kwinrc][org.kde.kdecoration2]
-library=org.kde.breeze
-theme=Breeze
+library=org.kde.darkly
+theme=Darkly
 
 [kwinrc][Windows]
 BorderlessMaximizedWindows=false

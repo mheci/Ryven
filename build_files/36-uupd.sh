@@ -1,14 +1,9 @@
 #!/bin/bash
-# uupd from Terra, then ublue COPR. Timer stages updates; never reboot.
+# uupd from Terra f44 (Name: uupd). Timer stages updates; never reboot.
 
 set -ouex pipefail
-# shellcheck source=copr-helpers.sh
-source /ctx/copr-helpers.sh
 
-if ! dnf5 -y install --enablerepo=terra uupd; then
-  copr_install_isolated "ublue-os/packages" uupd
-fi
-
+dnf5 -y install --enablerepo=terra uupd
 dnf5 -y install topgrade
 
 if [[ -f /etc/rpm-ostreed.conf ]]; then
