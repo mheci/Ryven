@@ -1,5 +1,6 @@
 #!/bin/bash
-# Ryven-Sericea compose. Base: ghcr.io/ublue-os/sericea-main (Fedora 44 Sway).
+# Ryven-Sericea compose. Base: ghcr.io/ublue-os/base-main + Sway (ublue
+# sericea-main is deprecated/unpublished).
 # Same product rules as Ryven/WL: no terra-release-nvidia, no mesa-freeworld
 # swap, no CUDA, no Docker, no LIBVA_DRIVER_NAME=nvidia, zswap on / zram off,
 # OGC kernel + ublue akmods-nvidia-open:ogc-44.
@@ -135,7 +136,10 @@ dnf5 -y install \
   pipewire pipewire-pulseaudio pipewire-alsa wireplumber \
   qt5-qtwayland qt6-qtwayland \
   xdg-utils xdg-user-dirs \
-  brightnessctl playerctl pavucontrol \
+  NetworkManager-wifi NetworkManager-bluetooth NetworkManager-tui \
+  nm-connection-editor network-manager-applet \
+  blueman brightnessctl playerctl pavucontrol \
+  thunar thunar-volman gvfs gvfs-mtp gvfs-gphoto2 \
   gnome-keyring polkit \
   google-noto-sans-fonts rsms-inter-fonts jetbrains-mono-fonts \
   fontawesome-fonts
@@ -144,7 +148,7 @@ if have_rpm docker-ce || have_rpm docker; then
   die 'docker RPM must not be present'
 fi
 
-systemctl enable chronyd.service podman.socket firewalld.service
+systemctl enable chronyd.service podman.socket firewalld.service NetworkManager.service
 systemctl disable systemd-timesyncd.service 2>/dev/null || true
 systemctl mask systemd-timesyncd.service 2>/dev/null || true
 systemctl disable sshd.service 2>/dev/null || true
@@ -155,12 +159,12 @@ if ! dnf5 -y install mise; then
   vendor_repo_install '*mise*.repo' https://mise.jdx.dev/rpm/mise.repo mise
 fi
 
-install_priority bun-bin || echo 'bun-bin unpublished' >&2
-install_any rust-deno deno || echo 'deno unpublished' >&2
-install_priority zed || echo 'zed unpublished' >&2
-install_priority mpv || echo 'mpv unpublished' >&2
-install_priority yt-dlp-git || echo 'yt-dlp-git unpublished' >&2
-install_priority python-yt-dlp-ejs || echo 'python-yt-dlp-ejs unpublished' >&2
+install_priority bun-bin
+install_any rust-deno deno
+install_priority zed
+install_any yt-dlp-git yt-dlp
+install_priority mpv
+install_any python-yt-dlp-ejs python3-yt-dlp
 swap_ffmpeg_priority
 install_priority steam
 install_priority scx-scheds scx-tools
@@ -190,20 +194,26 @@ if ! install_priority gpu-screen-recorder; then
   copr_install_isolated brycensranch/gpu-screen-recorder-git gpu-screen-recorder
 fi
 
-# Sway is on sericea-main. Refresh to latest Fedora/Terra/Fusion NEVRA.
-for pkg in sway swaybg swayidle swaylock waybar wofi fuzzel \
-  xdg-desktop-portal-wlr xdg-desktop-portal-gtk; do
-  install_priority "${pkg}" || echo "No NEVRA for ${pkg}" >&2
-done
-have_rpm sway || die 'sway RPM missing on sericea overlay'
+install_priority sway swaybg swayidle swaylock waybar wofi fuzzel \
+  xdg-desktop-portal-wlr xdg-desktop-portal-gtk
+have_rpm sway || die 'sway RPM missing'
 
-for pkg in wl-clipboard dunst grim slurp kde-connect wf-recorder \
-  android-tools libimobiledevice satty cliphist; do
-  install_priority "${pkg}" || echo "No NEVRA for ${pkg}" >&2
-done
-if ! install_any wl-clip-persist; then
-  echo 'wl-clip-persist unpublished; omitting' >&2
-  sed -i '/wl-clip-persist/d' /usr/share/sway/config.d/50-ryven.conf /etc/sway/config.d/50-ryven.conf 2>/dev/null || true
+install_priority \
+  wl-clipboard dunst grim slurp \
+  kde-connect \
+  wf-recorder \
+  android-tools libimobiledevice
+install_priority satty || copr_install_isolated nett00n/hyprland satty
+install_priority cliphist || copr_install_isolated nett00n/hyprland cliphist
+install_wl_clip_persist
+install_priority greetd
+install_any tuigreet greetd-tuigreet
+
+getent passwd greeter >/dev/null || useradd -r -s /usr/bin/nologin greeter
+systemctl enable greetd.service
+if [[ -f /usr/lib/systemd/system/sddm.service ]]; then
+  systemctl disable sddm.service
+  systemctl mask sddm.service
 fi
 
 if have_rpm zram-generator-defaults || have_rpm zram-generator; then
@@ -291,6 +301,8 @@ check 'tearing' grep -q 'allow_tearing yes' /usr/share/sway/config.d/50-ryven.co
 check 'no LIBVA_DRIVER_NAME=nvidia' bash -c '! grep -r LIBVA_DRIVER_NAME=nvidia /usr/share/sway /usr/lib/environment.d 2>/dev/null'
 check 'wl-clipboard' rpm -q wl-clipboard
 check 'dunst' rpm -q dunst
+check 'wl-clip-persist' command -v wl-clip-persist
+check 'greetd enabled' unit_enabled greetd.service
 check 'nvidia kargs' test -f /usr/lib/bootc/kargs.d/00-nvidia.toml
 check 'zswap kargs' test -f /usr/lib/bootc/kargs.d/10-zswap.toml
 check 'ffmpeg rpm' rpm -q ffmpeg

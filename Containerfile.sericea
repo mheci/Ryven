@@ -1,4 +1,4 @@
-# Ryven-Sericea: ublue sericea-main (Fedora Sway Atomic) + Ryven gaming/agent overlay.
+# Ryven-Sericea: Sway on ublue base-main (sericea-main is unpublished/deprecated).
 FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
@@ -8,9 +8,7 @@ FROM ghcr.io/ublue-os/akmods:ogc-44 AS akmods
 FROM ghcr.io/ublue-os/akmods-extra:ogc-44 AS akmods-extra
 FROM ghcr.io/ublue-os/akmods-nvidia-open:ogc-44 AS akmods-nvidia
 
-# ghcr.io/ublue-os/sericea-main:latest is unpublished (manifest unknown).
-# Fedora renamed Sericea to sway-atomic; F44 is the same product ublue wrapped.
-FROM quay.io/fedora-ostree-desktops/sway-atomic:44
+FROM ghcr.io/ublue-os/base-main:latest
 
 RUN rm /opt && mkdir /opt
 

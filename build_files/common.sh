@@ -214,3 +214,26 @@ extract_ogc_kernel() {
 unit_enabled() {
   [[ $(systemctl is-enabled "$1" 2>/dev/null || true) == enabled ]]
 }
+
+# wl-clip-persist is not in Fedora/Terra/Fusion (2026-09). RPM first, then
+# cargo --locked from the upstream tag into /usr/bin. Not curl|sh.
+install_wl_clip_persist() {
+  if command -v wl-clip-persist >/dev/null 2>&1; then
+    return 0
+  fi
+  if install_priority wl-clip-persist; then
+    return 0
+  fi
+  dnf5 -y install rust cargo gcc git wayland-devel libxkbcommon-devel pkgconf-pkg-config
+  mkdir -p /tmp/wl-clip-persist
+  git clone --depth 1 --branch v0.5.0 \
+    https://github.com/Linus789/wl-clip-persist.git /tmp/wl-clip-persist
+  (
+    cd /tmp/wl-clip-persist
+    CARGO_HOME=/tmp/cargo cargo build --release --locked
+  )
+  install -D -m 0755 /tmp/wl-clip-persist/target/release/wl-clip-persist \
+    /usr/bin/wl-clip-persist
+  rm -rf /tmp/wl-clip-persist /tmp/cargo
+  command -v wl-clip-persist >/dev/null || die 'wl-clip-persist build produced no binary'
+}

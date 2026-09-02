@@ -12,7 +12,7 @@
 
 `ghcr.io/mheci/ryven-wl:latest` on `ghcr.io/ublue-os/base-main` (no DE). **Hyprland** + **QuickShell**, greetd/tuigreet + UWSM. Latest Hyprland stack from COPR `nett00n/hyprland` at compose time. Master layout, tearing + `preferred` (max res/refresh) on all monitors. Clipboard: wl-clipboard, cliphist, wl-clip-persist. Notifications: dunst. Portals: xdg-desktop-portal-hyprland. Screenshots: grim/slurp/satty/hyprshot. Phone: KDE Connect. NVIDIA: `NVD_BACKEND=direct`, GBM nvidia-drm — not `LIBVA_DRIVER_NAME=nvidia`.
 
-`ghcr.io/mheci/ryven-sericea:latest` on `ghcr.io/ublue-os/sericea-main` (Fedora **Sway** Atomic). Same NVIDIA/gaming/agent stack. Tearing + preferred output mode, dunst, cliphist, KDE Connect, xdg-desktop-portal-wlr. GPU: ublue `akmods` / `akmods-extra` / `akmods-nvidia-open` (`ogc-44`) plus OGC `kernel-packages-fedora:latest-fc44`. **zswap on**, **zram off**. Look: `org.ryven.desktop`, Darkly, Breeze icons, Inter Regular, wallpaper **10**. ISO is weekly after the scheduled OCI build.
+`ghcr.io/mheci/ryven-sericea:latest` on `ghcr.io/ublue-os/base-main` + **Sway** (ublue `sericea-main` is deprecated). Same NVIDIA/gaming/agent stack. Tearing + preferred outputs, dunst, cliphist, wl-clip-persist (built from source if no RPM), KDE Connect, xdg-desktop-portal-wlr, greetd. GPU: ublue `akmods` / `akmods-extra` / `akmods-nvidia-open` (`ogc-44`) plus OGC `kernel-packages-fedora:latest-fc44`. **zswap on**, **zram off**. ISO is weekly after the scheduled OCI build.
 
 ## Switch
 
@@ -46,6 +46,8 @@ CUDA, Docker/VMs, `terra-release-nvidia`, mesa-freeworld swap, cardwire, v4l2loo
 
 ```bash
 just build
+CONTAINERFILE=Containerfile.wl just build ryven-wl
+CONTAINERFILE=Containerfile.sericea just build ryven-sericea
 just ostree-rechunk
 ```
 

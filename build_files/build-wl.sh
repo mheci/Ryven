@@ -231,12 +231,7 @@ install_priority \
   kde-connect \
   wf-recorder \
   android-tools libimobiledevice
-# wl-clip-persist has no Fedora/Terra/Fusion NEVRA (2026-09-02). cliphist +
-# wl-clipboard still persist text/images while the source client lives.
-if ! install_any wl-clip-persist; then
-  echo 'wl-clip-persist unpublished; omitting' >&2
-  sed -i '/wl-clip-persist/d' /usr/share/hypr/hyprland.conf /etc/skel/.config/hypr/hyprland.conf 2>/dev/null || true
-fi
+install_wl_clip_persist
 if ! install_any greetd; then
   die 'greetd missing'
 fi
@@ -347,6 +342,7 @@ check 'tearing' grep -q 'allow_tearing = true' /usr/share/hypr/hyprland.conf
 check 'no LIBVA_DRIVER_NAME=nvidia' bash -c '! grep -r LIBVA_DRIVER_NAME=nvidia /usr/share/hypr /usr/lib/environment.d /etc/xdg/uwsm 2>/dev/null'
 check 'cliphist' rpm -q cliphist
 check 'wl-clipboard' rpm -q wl-clipboard
+check 'wl-clip-persist' command -v wl-clip-persist
 check 'dunst' rpm -q dunst
 check 'xdg-desktop-portal-hyprland' rpm -q xdg-desktop-portal-hyprland
 check 'greetd enabled' unit_enabled greetd.service
