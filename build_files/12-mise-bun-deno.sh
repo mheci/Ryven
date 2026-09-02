@@ -1,6 +1,6 @@
 #!/bin/bash
-# mise: Fedora if present, else official mise RPM repo (then disable).
-# bun-bin + rust-deno: Terra f44.
+# mise: official RPM repo (not in Fedora 44). bun-bin: Terra.
+# rust-deno: Terra Name, else Fedora deno.
 
 set -ouex pipefail
 
@@ -13,4 +13,10 @@ if ! dnf5 -y install mise; then
   done
 fi
 
-dnf5 -y install --enablerepo=terra bun-bin rust-deno
+dnf5 -y install --enablerepo=terra bun-bin
+
+if ! dnf5 -y install --enablerepo=terra rust-deno; then
+  if ! dnf5 -y install --enablerepo=terra deno; then
+    dnf5 -y install deno
+  fi
+fi
