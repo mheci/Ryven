@@ -8,7 +8,7 @@ set -ouex pipefail
 VER=11.0-20260703-slr
 BASE="https://github.com/CachyOS/proton-cachyos/releases/download/cachyos-${VER}"
 TAR="proton-cachyos-${VER}-x86_64.tar.xz"
-SUM="${TAR}.sha512sum"
+SUM="proton-cachyos-${VER}-x86_64.sha512sum"
 DEST=/usr/share/steam/compatibilitytools.d
 
 dnf5 -y install tar xz curl coreutils
