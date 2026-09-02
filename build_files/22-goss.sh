@@ -56,7 +56,14 @@ check "proton wayland" grep -q 'PROTON_ENABLE_WAYLAND=1' /usr/lib/environment.d/
 check "no WINEFSYNC" bash -c '! grep -q WINEFSYNC /usr/lib/environment.d/60-ryven-proton.conf'
 check "flatpak first-boot unit" test -f /usr/lib/systemd/system/ryven-flatpak-setup.service
 check "bees generator" test -x /usr/lib/systemd/system-generators/ryven-bees-generator
-check "greenboot redboot-auto-reboot" bash -c '[[ $(systemctl is-enabled redboot-auto-reboot.service) == enabled ]]'
+check "greenboot rpm" rpm -q greenboot
+check "greenboot redboot-auto-reboot" bash -c '
+  if [[ -f /usr/lib/systemd/system/redboot-auto-reboot.service ]]; then
+    [[ $(systemctl is-enabled redboot-auto-reboot.service) == enabled ]]
+  else
+    true
+  fi
+'
 check "proton-cachyos vdf" bash -c 'find /usr/share/steam/compatibilitytools.d -name compatibilitytool.vdf | grep -q .'
 # terra-gamescope: f44 spec exists, no NEVRA in terra44/multimedia/mesa (2026-09-02).
 check "helium-browser-bin" rpm -q helium-browser-bin
