@@ -1,44 +1,60 @@
 #!/bin/bash
-# Ryven compose — Fedora 44 Kinoite (ublue kinoite-main).
+# Ryven image compose. Invoked once from the Containerfile RUN as PID 1 of
+# that layer. There is no real systemd here: `systemctl enable|disable|mask`
+# only writes/removes unit wants and mask symlinks under /etc/systemd.
+# `systemctl start` would be a no-op or fail; never start units in this script.
 #
-# Runs once in the Containerfile as PID 1 of the build RUN. systemd is not
-# the real init; systemctl enable/mask only writes unit wants/masks.
+# Base image is ghcr.io/ublue-os/kinoite-main (Fedora 44 KDE). Overlay tree
+# from /ctx/system_files is copied first so kargs, udev, environment.d, Plasma
+# look-and-feel, and justfiles exist before RPM work that might assume them.
 #
-# NEVRA resolution (highest first), per package, never a mixed-repo
-# transaction:
+# Package source order is a standing product rule, applied per NEVRA Name
+# (never one mixed-repo dnf transaction that can fail the whole set):
 #   1. Official vendor/dev repos already on disk (Brave, mise, OpenRazer, …)
 #   2. Terra f44: terra, terra-extras, terra-multimedia, terra-mesa
-#   3. RPM Fusion free/nonfree (+ updates)
-#   4. Fedora
+#   3. RPM Fusion free + nonfree including their -updates
+#   4. Official Fedora (dnf default, no extra --enablerepo)
+# COPR is last-resort only (zen-browser, gpu-screen-recorder) and the COPR
+# repo file is disabled again after the install.
 #
-# terra-release-nvidia is never installed. NVIDIA kmods come from
-# ublue akmods-nvidia-open:ogc-44 + OGC kernel RPMs. CUDA is excluded.
-# Third-party .repo files stay on disk but enabled=0 on the running image;
-# compose re-enables them with --enablerepo.
+# terra-release-nvidia is never installed. NVIDIA kernel modules come from
+# ublue akmods-nvidia-open:ogc-44 (prebuilt kmod-nvidia, not akmod-%post).
+# CUDA packages are excluded. Third-party .repo files stay on the image but
+# must be enabled=0 at rest; compose re-enables them with --enablerepo.
+# Never `dnf swap mesa-*-freeworld --allowerasing`. Never kernel versionlock.
 
 set -ouex pipefail
 
+# Fedora major used in Fusion/Terra URL paths. Bump Fusion, Terra, and the
+# Containerfile FROM together when leaving 44.
 readonly FEDORA_RELEASE=44
+# Comma list for dnf5 --enablerepo. terra-extras is the extras subrepo from
+# terra-release-extras (%package extras), not a separate product.
 readonly TERRA_REPOS='terra,terra-extras,terra-multimedia,terra-mesa'
 readonly FUSION_REPOS='rpmfusion-free,rpmfusion-free-updates,rpmfusion-nonfree,rpmfusion-nonfree-updates'
+# Open Gaming Collective kernel RPM OCI (skopeo dir copy). Tag tracks fc44.
 readonly OGC_IMAGE='ghcr.io/opengamingcollective/kernel-packages-fedora:latest-fc44'
+# CachyOS Proton Steam Linux Runtime build. Asset names on GitHub omit .tar.xz
+# from the .sha512sum filename; keep both strings in lockstep when bumping.
 readonly PROTON_CACHYOS_VER='11.0-20260703-slr'
+# rpm-ostree kernel-install plugins assume a booted ostree. During kernel
+# RPM replace they try to run and fail the transaction; we stub then restore.
 readonly KERNEL_INSTALL_STUBS=(05-rpmostree.install 50-dracut.install)
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 die() {
   echo "$*" >&2
   exit 1
 }
 
+# True if RPM Name (or NEVRA) is already in the rpmdb. Used to skip installs
+# and to decide ffmpeg-free vs ffmpeg before swap.
 have_rpm() {
   rpm -q "$1" >/dev/null 2>&1
 }
 
-# Leave matching yum repo files present but disabled (bootc image default).
+# Leave yum/dnf repo files on disk (needed for later --enablerepo) but force
+# enabled=0 so a booted host does not pull from Terra/Fusion/vendor by default.
+# Globs are expanded by the caller or via nullglob inside; missing files skip.
 disable_yum_repos() {
   local repo
   shopt -s nullglob
@@ -49,8 +65,11 @@ disable_yum_repos() {
 }
 
 # install_priority [--official-repo=ID] PKG...
-# Resolve each Name independently so Terra-only and Fusion-only NEVRAs in
-# one call cannot fail the whole transaction (dnf5 all-or-nothing).
+# Resolve each Name independently so a Terra-only Name and a Fusion-only Name
+# in one call cannot fail the whole dnf5 transaction (dnf5 is all-or-nothing).
+# Optional --official-repo may be repeated (Brave, mise). Order per pkg:
+# already installed → official repo(s) → Terra set → Fusion set → Fedora.
+# Returns 1 if any Name has no NEVRA in that ladder (caller may fallback).
 install_priority() {
   local official=()
   local pkg
@@ -80,7 +99,8 @@ install_priority() {
   return 0
 }
 
-# First Name that installs wins (nightly→stable style fallbacks).
+# Try Names in order until one installs. Used for nightly vs stable aliases
+# (ghostty-tip vs ghostty) and Terra vs Fedora names (helium-browser-bin).
 install_any() {
   local name
   for name in "$@"; do
@@ -92,7 +112,9 @@ install_any() {
   return 1
 }
 
-# Prefer Terra ffmpeg over Fedora ffmpeg-free; Fusion is the next swap.
+# Fedora ships ffmpeg-free. We want full ffmpeg. Prefer Terra swap (same
+# priority ladder as packages); Fusion swap is next; then a fresh install.
+# --allowerasing is required because the two packages conflict on files.
 swap_ffmpeg_priority() {
   if have_rpm ffmpeg; then
     return 0
@@ -108,7 +130,9 @@ swap_ffmpeg_priority() {
   install_priority ffmpeg
 }
 
-# Enable a COPR only for the listed packages, then disable the repo file.
+# Enable a COPR, install listed packages, immediately disable the COPR repo
+# file. The packages stay in rpmdb; later dnf on the host will not use COPR
+# unless an admin re-enables it. Fail hard if enable or install fails.
 copr_install_isolated() {
   local copr=$1
   shift
@@ -117,7 +141,10 @@ copr_install_isolated() {
   dnf5 -y copr disable "${copr}"
 }
 
-# Drop-in vendor repo, install, then disable the file (same pattern as Terra).
+# Add a vendor .repo from URL (overwrite if compose is re-run), install the
+# remaining argv packages, then disable matching repo files so they are not
+# default-on. glob is a basename glob under /etc/yum.repos.d (unquoted so
+# the shell can expand *mise*.repo / *razer*.repo).
 vendor_repo_install() {
   local glob=$1
   local url=$2
@@ -127,7 +154,8 @@ vendor_repo_install() {
   disable_yum_repos /etc/yum.repos.d/${glob}
 }
 
-# rpm-ostree kernel-install hooks expect a booted ostree; stub during swap.
+# Replace rpm-ostree/dracut kernel-install plugins with `exit 0` so dnf can
+# replace kernel-core in an unbooted container. Restored after depmod.
 stub_kernel_install_hooks() {
   local f
   [[ -d /usr/lib/kernel/install.d ]] || return 0
@@ -154,7 +182,10 @@ restore_kernel_install_hooks() {
   popd >/dev/null
 }
 
-# Prebuilt kmod-* + *-kmod-common only. Never akmod-* (%post is not root).
+# Install prebuilt kmod-* and *-kmod-common RPMs with rpm --nodeps (dep chain
+# is the OGC kernel we just installed, not Fedora's). Skip akmod-* : those
+# expect a %post compile as root on a booted system and would leave no .ko.
+# Empty match is a warning, not a hard fail (optional extra kmods).
 install_kmod_bundle() {
   local -a rpms=()
   local f
@@ -170,7 +201,9 @@ install_kmod_bundle() {
   rpm --install --nodeps "${rpms[@]}"
 }
 
-# Pull kernel*.rpm blobs from the OGC OCI artifact (skopeo dir transport).
+# Copy the OGC kernel OCI to a dir transport, then extract only kernel* RPM
+# layers. OCI layers may be tar or raw RPM blobs; title annotation is the
+# filename. Exclude kernel-headers / unrelated packages via the title regex.
 extract_ogc_kernel() {
   local dest=$1
   local manifest=/tmp/ogc-oci/manifest.json
@@ -199,22 +232,26 @@ extract_ogc_kernel() {
   done < <(jq -c '.layers[]' "${manifest}")
 }
 
+# systemctl is-enabled prints enabled|disabled|masked|static|…. Compare to
+# the string enabled. Missing units are not enabled.
 unit_enabled() {
   [[ $(systemctl is-enabled "$1" 2>/dev/null || true) == enabled ]]
 }
 
-# ---------------------------------------------------------------------------
-# Overlay + third-party metadata
-# ---------------------------------------------------------------------------
-
+# Overlay /ctx/system_files onto the image root. Paths here are the source of
+# truth for kargs.d, environment.d, udev, sysctl, Plasma, justfiles, pixmaps.
 cp -avf /ctx/system_files/. /
 
+# RPM Fusion release RPMs drop /etc/yum.repos.d/rpmfusion-*.repo. Version in
+# the URL must match FEDORA_RELEASE. Files are disabled after Terra bootstrap.
 dnf5 -y install \
   "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${FEDORA_RELEASE}.noarch.rpm" \
   "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${FEDORA_RELEASE}.noarch.rpm"
 
-# Bootstrap Terra with --nogpgcheck only long enough to land terra-release
-# (ships the signing keys). Subrepos: extras, mesa, multimedia. Not nvidia.
+# Terra bootstrap: --nogpgcheck + --repofrompath only until terra-release
+# lands (it ships the FyraLabs signing keys and terra.repo). Then install
+# extras/mesa/multimedia subpackages from the now-signed terra repo.
+# Do not install terra-release-nvidia.
 dnf5 -y install --nogpgcheck \
   --repofrompath "terra,https://repos.fyralabs.com/terra${FEDORA_RELEASE}" \
   terra-release
@@ -223,18 +260,20 @@ dnf5 -y install --enablerepo=terra \
   terra-release-mesa \
   terra-release-multimedia
 
+# Default-off: Fusion and all Terra repo files (terra, extras, mesa, multimedia).
 disable_yum_repos /etc/yum.repos.d/rpmfusion*.repo /etc/yum.repos.d/*terra*.repo
 
-# ---------------------------------------------------------------------------
-# OGC kernel + ublue ogc-44 kmods (xone, xpadneo, openrazer, ryzen_smu, zenergy, NVIDIA open)
-# ---------------------------------------------------------------------------
-
+# OGC kernel replace + ublue ogc-44 kmods (xone, xpadneo, openrazer, ryzen_smu,
+# zenergy, NVIDIA open). Stub kernel-install first so rpm -e / dnf install of
+# kernel-core does not invoke rpm-ostree plugins in this unbooted tree.
 stub_kernel_install_hooks
 dnf5 -y install jq skopeo
 extract_ogc_kernel /tmp/kernel-rpms
 compgen -G '/tmp/kernel-rpms/kernel-core-*.rpm' >/dev/null \
   || die 'OGC kernel-core RPM missing under /tmp/kernel-rpms'
 
+# Erase Fedora/ublue kernel Names (nodeps: we immediately install OGC). Wipe
+# /usr/lib/modules so leftover .ko from the old kver cannot confuse depmod.
 local_pkg=
 for local_pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra kernel-tools kernel-tools-libs; do
   if have_rpm "${local_pkg}"; then
@@ -243,14 +282,19 @@ for local_pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-mo
 done
 rm -rf /usr/lib/modules/*
 
+# Globs must expand to real RPMs; dnf5 install of a literal glob would fail.
 dnf5 -y install \
   /tmp/kernel-rpms/kernel-[0-9]*.rpm \
   /tmp/kernel-rpms/kernel-core-*.rpm \
   /tmp/kernel-rpms/kernel-modules-*.rpm \
   /tmp/kernel-rpms/kernel-devel-*.rpm
 
+# Single kver string for depmod and nvidia .ko path checks. sort -V + tail if
+# more than one kernel-core ever landed (should be one after the erase).
 KVER=$(rpm -q kernel-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -n1)
 
+# ublue-os-akmods COPR is on the base image disabled. Enable only long enough
+# to install addons if the COPY --from=akmods tree did not already provide them.
 if [[ -f /etc/yum.repos.d/_copr_ublue-os-akmods.repo ]]; then
   sed -i 's@enabled=0@enabled=1@g' /etc/yum.repos.d/_copr_ublue-os-akmods.repo
 fi
@@ -260,6 +304,8 @@ elif compgen -G '/tmp/akmods-rpms/ublue-os/ublue-os-akmods*.rpm' >/dev/null; the
   dnf5 -y install /tmp/akmods-rpms/ublue-os/ublue-os-akmods*.rpm
 fi
 
+# Gamepad + Razer hid kmods from the ublue akmods COPY. Multiple glob paths
+# because ublue has shuffled kmods/ vs common/ layouts across tags.
 shopt -s nullglob
 install_kmod_bundle \
   /tmp/akmods-rpms/kmods/kmod-xone*.rpm \
@@ -273,6 +319,7 @@ install_kmod_bundle \
   /tmp/akmods-rpms/common/*openrazer*kmod-common*.rpm \
   /tmp/akmods-rpms/kmods/*openrazer*kmod-common*.rpm
 
+# Extra out-of-tree modules (ryzen_smu, zenergy) from the akmods-extra COPY.
 install_kmod_bundle \
   /tmp/akmods-extra-rpms/kmods/kmod-*ryzen*smu*.rpm \
   /tmp/akmods-extra-rpms/extra/kmod-*ryzen*smu*.rpm \
@@ -287,10 +334,14 @@ if [[ -f /etc/yum.repos.d/_copr_ublue-os-akmods.repo ]]; then
   sed -i 's@enabled=1@enabled=0@g' /etc/yum.repos.d/_copr_ublue-os-akmods.repo
 fi
 
+# nvidia-vars is written by ublue's akmods-nvidia-open:ogc-44 image; absence
+# means the Containerfile COPY --from= that stage was dropped or empty.
 AKMODNV_PATH=/tmp/akmods-nvidia-rpms
 [[ -f ${AKMODNV_PATH}/kmods/nvidia-vars ]] \
   || die "akmods-nvidia-open:ogc-44 missing ${AKMODNV_PATH}/kmods/nvidia-vars"
 
+# ublue ships nvidia-install.sh; it expects IMAGE_NAME and AKMODNV_PATH in
+# the environment. MULTILIB=1 pulls i686 NVIDIA userspace for Steam/Proton.
 INSTALL_SH=
 if [[ -x ${AKMODNV_PATH}/ublue-os/nvidia-install.sh || -f ${AKMODNV_PATH}/ublue-os/nvidia-install.sh ]]; then
   INSTALL_SH=${AKMODNV_PATH}/ublue-os/nvidia-install.sh
@@ -299,9 +350,12 @@ else
 fi
 [[ -n ${INSTALL_SH} ]] || die 'nvidia-install.sh missing from akmods-nvidia-open:ogc-44'
 
-# IMAGE_NAME=kinoite selects the ublue kinoite nvidia-install path (supergfxctl).
+# IMAGE_NAME=kinoite selects the kinoite branch (supergfxctl / Plasma bits)
+# inside nvidia-install.sh rather than silverblue/gnome.
 IMAGE_NAME=kinoite AKMODNV_PATH="${AKMODNV_PATH}" MULTILIB=1 bash "${INSTALL_SH}"
 
+# Nouveau Vulkan ICD would race NVIDIA. Unversioned libnvidia-ml.so is what
+# several tools dlopen; the SONAME is libnvidia-ml.so.1.
 rm -f /usr/share/vulkan/icd.d/nouveau_icd.*.json
 if [[ -e /usr/lib64/libnvidia-ml.so.1 ]]; then
   ln -sf libnvidia-ml.so.1 /usr/lib64/libnvidia-ml.so
@@ -309,6 +363,11 @@ fi
 depmod -a "${KVER}"
 restore_kernel_install_hooks
 
+# bootc kargs.d is applied on next bootc/rpm-ostree deploy. Nouveau blocked;
+# nvidia drm modeset + fbdev; simpledrm initcall blacklisted so NVIDIA owns
+# the console; PreserveVideoMemoryAllocations + /var/tmp for suspend; ReBAR,
+# PCIe gen3, PAT, stream memops, no D3 dynamic PM (gaming), GPU GSP firmware,
+# PerfLevelSrc=0x2222 (prefer max clocks). Do not set LIBVA_DRIVER_NAME here.
 mkdir -p /usr/lib/bootc/kargs.d
 cat >/usr/lib/bootc/kargs.d/00-nvidia.toml <<'EOF'
 kargs = [
@@ -330,7 +389,9 @@ kargs = [
 ]
 EOF
 
-# Fusion libva-nvidia-driver (both ISAs). Never Terra NVIDIA.
+# Fusion VA-API NVIDIA driver for both ISAs (Steam 32-bit). Exclude CUDA.
+# vulkan-loader both ISAs from the priority ladder. nvidia-settings from
+# Fusion only if the ublue nvidia-install.sh did not already provide it.
 dnf5 -y install \
   --enablerepo="${FUSION_REPOS}" \
   --exclude='cuda*' \
@@ -342,10 +403,10 @@ if ! have_rpm nvidia-settings; then
   dnf5 -y install --enablerepo="${FUSION_REPOS}" --exclude='cuda*' nvidia-settings
 fi
 
-# ---------------------------------------------------------------------------
-# Base OS policy
-# ---------------------------------------------------------------------------
-
+# Base OS: just (ujust), Secure Boot tooling, LUKS/TPM unlock, chrony (not
+# timesyncd), podman (not docker), firewalld, git+gh, sudo-rs, Flatpak binary
+# for first-boot host installs, Plasma Login Manager (not SDDM), greenboot,
+# Firefox RPM (not the Flathub app).
 dnf5 -y install \
   just mokutil shim efibootmgr \
   cryptsetup clevis clevis-luks clevis-dracut tpm2-tools \
@@ -356,35 +417,42 @@ dnf5 -y install \
   greenboot greenboot-default-health-checks \
   firefox
 
+# Product rule: no Docker engine on the image.
 if have_rpm docker-ce || have_rpm docker; then
   die 'docker RPM must not be present'
 fi
 
+# chronyd is NTP. timesyncd would fight it; mask so a later enable cannot
+# start it. sshd off by default (workstation image, not a server).
 systemctl enable chronyd.service podman.socket firewalld.service
 systemctl disable systemd-timesyncd.service 2>/dev/null || true
 systemctl mask systemd-timesyncd.service 2>/dev/null || true
 systemctl disable sshd.service 2>/dev/null || true
 systemctl mask sshd.service 2>/dev/null || true
 
+# git-credential-manager is not in Fedora/Terra/Fusion; isolated COPR.
 copr_install_isolated vdanielmo/git-credential-manager git-credential-manager
 
-# mise is not in Fedora 44; official jdx RPM repo, then disable the file.
+# mise (jdx) is not in Fedora 44. Try Fedora first in case that changes, then
+# the official RPM repo; disable the repo file after install.
 if ! dnf5 -y install mise; then
   vendor_repo_install '*mise*.repo' https://mise.jdx.dev/rpm/mise.repo mise
 fi
 
-# ---------------------------------------------------------------------------
-# Dev tools, media, browsers (Terra Names first)
-# ---------------------------------------------------------------------------
-
+# bun-bin, deno (Terra rust-deno Name first), Zed stable (not nightly), mpv
+# from Terra stable path via Name mpv, yt-dlp-git + ejs helper, then ffmpeg.
 install_priority bun-bin
 install_any rust-deno deno
 install_priority zed
 install_priority mpv yt-dlp-git python-yt-dlp-ejs
 swap_ffmpeg_priority
 install_priority steam
+# scx-scheds = schedulers; scx-tools = scx_loader unit + CLI. Terra stable.
 install_priority scx-scheds scx-tools
 
+# scx_loader config: lavd in Gaming/performance for every mode. Dual path
+# /etc/scx_loader.toml and /etc/scx_loader/config.toml because unit versions
+# disagree on the filename. /etc/default/scx is the classic scx.service env.
 mkdir -p /etc /etc/scx_loader /etc/default
 cat >/etc/scx_loader.toml <<'EOF'
 default_sched = "scx_lavd"
@@ -405,13 +473,17 @@ fi
 systemctl enable scx_loader.service
 
 install_priority faugus-launcher
+# Remove Flathub Firefox if the base image seeded it; we ship the RPM.
 if command -v flatpak >/dev/null 2>&1; then
   flatpak uninstall --system -y org.mozilla.firefox || true
 fi
+# zen-browser: Terra/Fedora first; sneexy COPR only if no NEVRA.
 if ! install_any zen-browser; then
   copr_install_isolated sneexy/zen-browser zen-browser
 fi
 
+# Brave official repo file written enabled=0; install with --enablerepo so
+# the file stays default-off. helium-browser-bin is the Terra Name.
 cat >/etc/yum.repos.d/brave-browser.repo <<'EOF'
 [brave-browser]
 name=Brave Browser
@@ -423,7 +495,8 @@ EOF
 dnf5 -y install --enablerepo=brave-browser brave-origin
 install_any helium-browser-bin helium-browser
 
-# Terra Mesa first. Never dnf swap mesa-*-freeworld --allowerasing.
+# Align Mesa with Terra (mesa + multimedia). Fail soft: NVIDIA userspace from
+# ublue can conflict; never use mesa-*-freeworld --allowerasing.
 if ! dnf5 -y distro-sync --enablerepo="${TERRA_REPOS}" \
   mesa-dri-drivers mesa-va-drivers mesa-vulkan-drivers \
   mesa-libGL mesa-libEGL mesa-libgbm mesa-filesystem \
@@ -432,6 +505,7 @@ if ! dnf5 -y distro-sync --enablerepo="${TERRA_REPOS}" \
   echo 'Terra Mesa distro-sync failed (NVIDIA userspace conflict). Keeping current Mesa.' >&2
 fi
 
+# VA-API/VDPAU stack, GStreamer, codecs, Intel iHD + i965, KDE thumbnailers.
 install_priority \
   libva libva-utils libvdpau vdpauinfo \
   gstreamer1-plugin-libav gstreamer1-plugin-openh264 gstreamer1-vaapi \
@@ -440,14 +514,14 @@ install_priority \
   totem-video-thumbnailer kdegraphics-thumbnailers icoextract-thumbnailer
 install_any python3-icoextract
 
+# libdvdcss lives in rpmfusion-free-tainted. Install the tainted release RPM
+# with free enabled, install libdvdcss, then disable tainted repos at rest.
 dnf5 -y install --enablerepo=rpmfusion-free --enablerepo="${FUSION_REPOS}" rpmfusion-free-release-tainted
 dnf5 -y install --enablerepo=rpmfusion-free-tainted libdvdcss
 disable_yum_repos /etc/yum.repos.d/*tainted*.repo
 
-# ---------------------------------------------------------------------------
-# Memory, login, greenboot
-# ---------------------------------------------------------------------------
-
+# zram is removed entirely. Compressed RAM is zswap via kargs.d/10-zswap.toml
+# from system_files. Empty zram-generator.conf plus mask of the instance unit.
 if have_rpm zram-generator-defaults || have_rpm zram-generator; then
   dnf5 -y remove zram-generator-defaults zram-generator
 fi
@@ -457,12 +531,16 @@ printf '%s\n' '# Ryven: zram disabled. Compressed RAM is zswap (kargs.d/10-zswap
 ln -sfn /dev/null /etc/systemd/system/systemd-zram-setup@zram0.service
 systemctl mask systemd-zram-setup@zram0.service
 
+# Plasma Login Manager is the display manager. Mask SDDM if the unit exists
+# so a later package cannot re-enable it as default.
 systemctl enable --force plasmalogin.service
 if [[ -f /usr/lib/systemd/system/sddm.service ]] || systemctl list-unit-files sddm.service >/dev/null 2>&1; then
   systemctl disable sddm.service
   systemctl mask sddm.service
 fi
 
+# Enable every greenboot/redboot unit shipped by the RPMs, including
+# redboot-auto-reboot (native greenboot; do not drop it). Fail if none found.
 enabled=0
 shopt -s nullglob
 for unit in /usr/lib/systemd/system/greenboot*.service /usr/lib/systemd/system/redboot*.service; do
@@ -471,10 +549,9 @@ for unit in /usr/lib/systemd/system/greenboot*.service /usr/lib/systemd/system/r
 done
 ((enabled)) || die 'greenboot installed but no units under /usr/lib/systemd/system'
 
-# ---------------------------------------------------------------------------
-# Fonts, branding
-# ---------------------------------------------------------------------------
-
+# Fonts: DejaVu/Noto/Droid as fallbacks, Inter as Plasma default (kdeglobals
+# in system_files), JetBrains Mono, Adwaita, Carlito. cleartype-fonts if Terra
+# or Fedora has the Name.
 dnf5 -y install \
   dejavu-sans-fonts dejavu-sans-mono-fonts dejavu-serif-fonts \
   google-droid-sans-fonts google-droid-serif-fonts google-droid-sans-mono-fonts \
@@ -483,6 +560,10 @@ dnf5 -y install \
   adwaita-sans-fonts adwaita-mono-fonts google-crosextra-carlito-fonts
 install_priority cleartype-fonts
 
+# os-release NAME/PRETTY_NAME/IMAGE_ID for bootc/rpm-ostree UI and neofetch.
+# GRUB_DISTRIBUTOR for the boot menu label. Plymouth spinner watermark from
+# the branded pixmap. plasma-set-default-lookandfeel writes /etc/xdg bits
+# for org.ryven.desktop if the helper exists on this Plasma version.
 if [[ -f /usr/lib/os-release ]]; then
   sed -i \
     -e 's/^NAME=.*/NAME="Ryven"/' \
@@ -506,15 +587,15 @@ if [[ -d /usr/share/plasma/look-and-feel/org.ryven.desktop && -x /usr/libexec/pl
   /usr/libexec/plasma-set-default-lookandfeel org.ryven.desktop
 fi
 
-# ---------------------------------------------------------------------------
-# Desktop / games stack
-# ---------------------------------------------------------------------------
-
+# ScopeBuddy (scb symlink) for scoped game launches.
 install_priority jq ScopeBuddy
 if command -v scopebuddy >/dev/null && [[ ! -e /usr/bin/scb ]]; then
   ln -sf scopebuddy /usr/bin/scb
 fi
 
+# beesd: online btrfs dedup. Config UUID is host-specific, so a oneshot
+# writes /etc/bees/${UUID}.conf and a generator enables beesd@UUID only when
+# /var/home or / is btrfs. Harmless no-op on ext4/xfs test VMs.
 install_priority bees
 mkdir -p /usr/lib/systemd/system-generators /usr/libexec /etc/bees /usr/lib/systemd/system
 cat >/usr/libexec/ryven-bees-configure <<'EOF'
@@ -560,12 +641,16 @@ WantedBy=multi-user.target
 EOF
 systemctl enable ryven-bees-configure.service
 
+# OpenRazer userspace + plugdev for udev. polychromatic: Terra/Fedora first,
+# else OpenRazer hardware repo (disabled after install).
 install_priority openrazer-daemon python3-openrazer
 getent group plugdev >/dev/null || groupadd -r plugdev
 if ! dnf5 -y install polychromatic; then
   vendor_repo_install '*razer*.repo' https://openrazer.github.io/hardware:razer.repo polychromatic
 fi
 
+# MangoHud / obs-vkcapture 64-bit always. 32-bit only if a NEVRA exists so
+# we do not fail the compose on arches/repos that omit i686.
 install_priority mangohud obs-vkcapture
 if dnf5 list --available --enablerepo="${TERRA_REPOS}" --enablerepo="${FUSION_REPOS}" mangohud.i686 >/dev/null 2>&1; then
   install_priority mangohud.i686
@@ -575,6 +660,9 @@ if dnf5 list --available --enablerepo="${TERRA_REPOS}" --enablerepo="${FUSION_RE
 fi
 install_any goverlay
 
+# I/O scheduler udev: kyber on NVMe, bfq on rotational, mq-deadline on SATA
+# SSD. ATTR match requires the scheduler to be in the available list.
+# Remove the old 60-ryven-kyber.rules name if a previous layer left it.
 mkdir -p /usr/lib/udev/rules.d
 cat >/usr/lib/udev/rules.d/60-ryven-io-scheduler.rules <<'EOF'
 # NVMe → kyber
@@ -586,13 +674,17 @@ ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="sd*|vd*|mmcblk*", ATTR{queue/
 EOF
 rm -f /usr/lib/udev/rules.d/60-ryven-kyber.rules
 
+# uupd.timer is the ublue update path (bootc upgrade, no --apply). Disable
+# rpm-ostree AutomaticUpdatePolicy so it cannot fight uupd.
 install_priority uupd topgrade
 if [[ -f /etc/rpm-ostreed.conf ]] && grep -q '^AutomaticUpdatePolicy=' /etc/rpm-ostreed.conf; then
   sed -i 's/^AutomaticUpdatePolicy=.*/AutomaticUpdatePolicy=none/' /etc/rpm-ostreed.conf
 fi
 systemctl enable uupd.timer
 
-# Flatpaks persist on host /var (not compose /usr): Flatseal, Warehouse, Gear Lever, Bazaar.
+# Flatpaks must persist on host /var, not in the ostree /usr. First-boot
+# oneshot installs the four allowed apps (Flatseal, Warehouse, Gear Lever,
+# Bazaar) from Flathub then stamps /var/lib/ryven so it does not re-run.
 mkdir -p /usr/share/ryven /usr/libexec /usr/lib/systemd/system
 cat >/usr/share/ryven/flatpaks <<'EOF'
 com.github.tchx84.Flatseal
@@ -630,12 +722,14 @@ WantedBy=multi-user.target
 EOF
 systemctl enable ryven-flatpak-setup.service
 
+# ghostty-tip is a rolling Name; ghostty is stable. t3code stable, not nightly.
+# terra-gamescope: terrapkg has a spec on f44 but no NEVRA in terra /
+# terra-multimedia / terra-mesa as of 2026-09-02. Do not install Fedora
+# gamescope (different Name). Omit compositor if unpublished.
 install_any ghostty-tip ghostty
 install_priority \
   t3code heroic-games-launcher protonplus vulkan-low-latency-layer \
   ananicy-cpp cachyos-ananicy-rules android-udev-rules bpftune-gaming lact darkly
-# terra-gamescope: Name exists on terrapkg f44; no NEVRA in terra44/multimedia/mesa
-# (2026-09-02). Do not install the Fedora compositor of a different Name.
 if ! install_priority terra-gamescope; then
   echo 'terra-gamescope unpublished on Terra f44 repos; compositor omitted' >&2
 fi
@@ -648,7 +742,9 @@ install_priority bibata-cursor-theme klassy tela-icon-theme
   || die 'bpftune-gaming missing bpftune.service'
 systemctl enable bpftune.service ananicy-cpp.service
 
-# Pinned CachyOS SLR tarball + sha512 (not curl|sh). Asset names omit .tar.xz on the sum.
+# Pinned CachyOS Proton SLR tarball. sha512sum file lists the tar name without
+# requiring us to rewrite it. Fail if compatibilitytool.vdf is missing after
+# extract (Steam will not list the tool). Not curl|sh.
 PROTON_BASE="https://github.com/CachyOS/proton-cachyos/releases/download/cachyos-${PROTON_CACHYOS_VER}"
 PROTON_TAR="proton-cachyos-${PROTON_CACHYOS_VER}-x86_64.tar.xz"
 PROTON_SUM="proton-cachyos-${PROTON_CACHYOS_VER}-x86_64.sha512sum"
@@ -665,10 +761,9 @@ if [[ ! -f ${PROTON_DEST}/proton-cachyos/compatibilitytool.vdf && ! -f ${PROTON_
 fi
 rm -rf /tmp/proton-cachyos
 
-# ---------------------------------------------------------------------------
-# Build-time invariants (no GPU; systemd is not PID 1)
-# ---------------------------------------------------------------------------
-
+# Build-time invariants. No GPU, systemd is not PID 1: we only check files,
+# rpmdb, and is-enabled symlinks. Any FAIL sets fail=1; die at the end so
+# the layer does not publish a half-configured image.
 fail=0
 check() {
   local name=$1
