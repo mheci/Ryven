@@ -38,11 +38,11 @@ if compgen -G "/tmp/akmods-rpms/ublue-os/ublue-os-akmods*.rpm" >/dev/null; then
   dnf5 -y install /tmp/akmods-rpms/ublue-os/ublue-os-akmods*.rpm
 fi
 
-# Prebuilt kmod-* RPMs only. akmod-* %post tries to compile as root and fails in bootc.
+# Prebuilt kmod-* RPMs only. Never install akmod-* (their %post compiles as root).
 shopt -s nullglob
 COMMON=(/tmp/akmods-rpms/kmods/kmod-xone*.rpm /tmp/akmods-rpms/kmods/kmod-xpadneo*.rpm /tmp/akmods-rpms/kmods/kmod-openrazer*.rpm)
 if ((${#COMMON[@]})); then
-  dnf5 -y install "${COMMON[@]}"
+  rpm --install --nodeps "${COMMON[@]}"
 fi
 
 EXTRA=(/tmp/akmods-extra-src/rpms/kmods/kmod-*ryzen*smu*.rpm /tmp/akmods-extra-src/rpms/extra/kmod-*ryzen*smu*.rpm /tmp/akmods-extra-src/rpms/kmods/kmod-*zenergy*.rpm /tmp/akmods-extra-src/rpms/extra/kmod-*zenergy*.rpm)
