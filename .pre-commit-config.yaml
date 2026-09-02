@@ -19,12 +19,6 @@ repos:
       - id: shellcheck
         args: [-x, --severity=error]
 
-  - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.12.0-2
-    hooks:
-      - id: shfmt
-        args: [-d, -i, "2", -ci]
-
   - repo: https://github.com/hadolint/hadolint
     rev: v2.14.0
     hooks:

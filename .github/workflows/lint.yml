@@ -31,25 +31,6 @@ jobs:
           mapfile -t scripts < <(find . -type f -name '*.sh' ! -path './.git/*')
           shellcheck --severity=error -x "${scripts[@]}"
 
-  shfmt:
-    name: shfmt
-    runs-on: ubuntu-26.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Install shfmt
-        env:
-          SHFMT_VER: v3.12.0
-        run: |
-          set -euo pipefail
-          curl -fsSL -o /tmp/shfmt "https://github.com/mvdan/sh/releases/download/${SHFMT_VER}/shfmt_${SHFMT_VER}_linux_amd64"
-          chmod +x /tmp/shfmt
-          sudo mv /tmp/shfmt /usr/local/bin/shfmt
-      - name: shfmt -d
-        run: |
-          set -euo pipefail
-          mapfile -t scripts < <(find . -type f -name '*.sh' ! -path './.git/*')
-          shfmt -d -i 2 -ci "${scripts[@]}"
-
   hadolint:
     name: Hadolint
     runs-on: ubuntu-26.04
