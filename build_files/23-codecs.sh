@@ -62,7 +62,9 @@ dnf5 -y install --skip-unavailable --skip-broken "${TERRA[@]}" "${FUSION[@]}" \
   opus \
   ffmpegthumbnailer \
   totem-video-thumbnailer \
-  kdegraphics-thumbnailers || true
+  kdegraphics-thumbnailers \
+  icoextract-thumbnailer \
+  python3-icoextract || true
 
 dnf5 -y install "${FUSION[@]}" rpmfusion-free-release-tainted || true
 dnf5 -y install --enablerepo=rpmfusion-free-tainted libdvdcss || true

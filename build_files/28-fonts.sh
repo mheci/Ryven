@@ -26,4 +26,5 @@ dnf5 -y install --enablerepo=terra --skip-unavailable --skip-broken \
   jetbrains-mono-nerd-fonts \
   nerd-fonts-jetbrains-mono \
   nerd-fonts-symbols \
-  symbols-nerd-fonts || true
+  symbols-nerd-fonts \
+  cleartype-fonts || true

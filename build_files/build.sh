@@ -42,6 +42,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/35-kyber.sh
 /ctx/36-uupd.sh
 /ctx/37-flatpaks.sh
+/ctx/38-terra-stack.sh
 /ctx/22-goss.sh
 
 ### Install packages

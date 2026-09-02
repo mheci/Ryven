@@ -3,4 +3,4 @@
 
 set -ouex pipefail
 
-dnf5 -y install --enablerepo=terra zed
+dnf5 -y install --enablerepo=terra --skip-unavailable zed

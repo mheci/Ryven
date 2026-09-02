@@ -3,4 +3,5 @@
 
 set -ouex pipefail
 
-dnf5 -y install --enablerepo=terra mise bun deno
+dnf5 -y install --enablerepo=terra --skip-unavailable --skip-broken \
+  mise bun deno
