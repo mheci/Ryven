@@ -25,6 +25,7 @@ jobs:
       cancel-in-progress: false
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - image: ryven
