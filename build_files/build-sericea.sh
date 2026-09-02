@@ -155,10 +155,12 @@ if ! dnf5 -y install mise; then
   vendor_repo_install '*mise*.repo' https://mise.jdx.dev/rpm/mise.repo mise
 fi
 
-install_priority bun-bin
-install_any rust-deno deno
-install_priority zed
-install_priority mpv yt-dlp-git python-yt-dlp-ejs
+install_priority bun-bin || echo 'bun-bin unpublished' >&2
+install_any rust-deno deno || echo 'deno unpublished' >&2
+install_priority zed || echo 'zed unpublished' >&2
+install_priority mpv || echo 'mpv unpublished' >&2
+install_priority yt-dlp-git || echo 'yt-dlp-git unpublished' >&2
+install_priority python-yt-dlp-ejs || echo 'python-yt-dlp-ejs unpublished' >&2
 swap_ffmpeg_priority
 install_priority steam
 install_priority scx-scheds scx-tools
