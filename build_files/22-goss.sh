@@ -58,7 +58,7 @@ check "flatpak first-boot unit" test -f /usr/lib/systemd/system/ryven-flatpak-se
 check "bees generator" test -x /usr/lib/systemd/system-generators/ryven-bees-generator
 check "greenboot redboot-auto-reboot" bash -c '[[ $(systemctl is-enabled redboot-auto-reboot.service) == enabled ]]'
 check "proton-cachyos vdf" bash -c 'find /usr/share/steam/compatibilitytools.d -name compatibilitytool.vdf | grep -q .'
-check "terra-gamescope" rpm -q terra-gamescope
+# terra-gamescope: f44 spec exists, no NEVRA in terra44/multimedia/mesa (2026-09-02).
 check "helium-browser-bin" rpm -q helium-browser-bin
 check "gpu-screen-recorder" rpm -q gpu-screen-recorder
 check "polychromatic" rpm -q polychromatic
