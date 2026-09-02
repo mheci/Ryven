@@ -1,10 +1,12 @@
 #!/bin/bash
-# uupd from Terra f44 (Name: uupd). Timer stages updates; never reboot.
+# Terra f44 Name: uupd. topgrade: Fedora.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-dnf5 -y install --enablerepo=terra uupd
-dnf5 -y install topgrade
+install_priority uupd
+install_priority topgrade
 
 if [[ -f /etc/rpm-ostreed.conf ]]; then
   if grep -q '^AutomaticUpdatePolicy=' /etc/rpm-ostreed.conf; then

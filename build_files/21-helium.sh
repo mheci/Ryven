@@ -1,6 +1,8 @@
 #!/bin/bash
-# Helium Browser: Terra Name helium-browser-bin (anda/apps/helium-browser-bin).
+# Helium: Terra Name helium-browser-bin exists on frawhide; try Terra f44 then Fedora.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-dnf5 -y install --enablerepo=terra helium-browser-bin
+install_any helium-browser-bin helium-browser

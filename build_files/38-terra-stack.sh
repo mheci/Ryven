@@ -1,13 +1,15 @@
 #!/bin/bash
-# Terra stack. Nightlies: t3code-nightly, ghostty-tip. No cardwire.
-# gpu-screen-recorder: Terra, else COPR brycensranch/gpu-screen-recorder-git.
+# Terra f44 Names (expanded): ghostty-tip, heroic-games-launcher, terra-gamescope, …
+# gpu-screen-recorder is not on Terra f44; Fusion/Fedora then author COPR.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
+# shellcheck source=copr-helpers.sh
+source /ctx/copr-helpers.sh
 
-TERRA=(--enablerepo=terra,terra-multimedia)
-
-dnf5 -y install "${TERRA[@]}" \
-  ghostty-tip \
+install_any ghostty-tip ghostty
+install_priority \
   t3code-nightly \
   heroic-games-launcher \
   protonplus \
@@ -20,20 +22,18 @@ dnf5 -y install "${TERRA[@]}" \
   lact \
   darkly
 
-dnf5 -y install "${TERRA[@]}" \
+install_priority \
   opencode-cli \
   rpcs3 \
   extest \
   vicinae \
   espanso-wayland
 
-if ! dnf5 -y install "${TERRA[@]}" gpu-screen-recorder; then
-  # shellcheck source=copr-helpers.sh
-  source /ctx/copr-helpers.sh
+if ! install_priority gpu-screen-recorder; then
   copr_install_isolated "brycensranch/gpu-screen-recorder-git" gpu-screen-recorder
 fi
 
-dnf5 -y install "${TERRA[@]}" \
+install_priority \
   bibata-cursor-theme \
   klassy \
   tela-icon-theme

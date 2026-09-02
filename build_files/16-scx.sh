@@ -1,9 +1,11 @@
 #!/bin/bash
-# scx-scheds-nightly + scx-tools-nightly (ships scx_loader). lavd max performance.
+# Terra f44: scx-scheds-nightly + scx-tools-nightly (scx_loader). lavd max performance.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-dnf5 -y install --enablerepo=terra scx-scheds-nightly scx-tools-nightly
+install_priority scx-scheds-nightly scx-tools-nightly
 
 mkdir -p /etc
 cat >/etc/scx_loader.toml <<'EOF'

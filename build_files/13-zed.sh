@@ -1,8 +1,8 @@
 #!/bin/bash
-# Zed: Terra zed-nightly, else zed.
+# Zed: Terra zed-nightly (Name:), else Terra zed.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-if ! dnf5 -y install --enablerepo=terra zed-nightly; then
-  dnf5 -y install --enablerepo=terra zed
-fi
+install_any zed-nightly zed

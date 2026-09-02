@@ -1,8 +1,9 @@
 #!/bin/bash
-# mise: official RPM repo (not in Fedora 44). bun-bin: Terra.
-# rust-deno: Terra Name, else Fedora deno.
+# mise: official jdx RPM repo (not in Fedora 44). bun-bin + rust-deno: Terra f44.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
 if ! dnf5 -y install mise; then
   dnf5 -y config-manager addrepo --overwrite --from-repofile=https://mise.jdx.dev/rpm/mise.repo
@@ -13,10 +14,5 @@ if ! dnf5 -y install mise; then
   done
 fi
 
-dnf5 -y install --enablerepo=terra bun-bin
-
-if ! dnf5 -y install --enablerepo=terra rust-deno; then
-  if ! dnf5 -y install --enablerepo=terra deno; then
-    dnf5 -y install deno
-  fi
-fi
+install_priority bun-bin
+install_any rust-deno deno

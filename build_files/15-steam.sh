@@ -1,8 +1,8 @@
 #!/bin/bash
-# Steam: Terra Name: steam, then RPM Fusion nonfree.
+# Steam: Terra Name: steam, then RPM Fusion nonfree, then Fedora.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-if ! dnf5 -y install --enablerepo=terra steam; then
-  dnf5 -y install --enablerepo=rpmfusion-nonfree steam
-fi
+install_priority steam

@@ -1,12 +1,12 @@
 #!/bin/bash
-# OpenRazer userspace from Terra. polychromatic from Fedora, else official razer repo.
+# OpenRazer userspace: Terra subpackages openrazer-daemon python3-openrazer.
+# polychromatic: official OpenRazer repo, then Fedora.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-# shellcheck source=copr-helpers.sh
-source /ctx/copr-helpers.sh
-
-dnf5 -y install --enablerepo=terra openrazer-daemon python3-openrazer
+install_priority openrazer-daemon python3-openrazer
 getent group plugdev >/dev/null || groupadd -r plugdev
 
 if ! dnf5 -y install polychromatic; then

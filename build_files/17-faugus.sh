@@ -1,6 +1,8 @@
 #!/bin/bash
-# faugus-launcher from Terra f44 (Name: faugus-launcher). No COPR.
+# Terra f44 Name: faugus-launcher.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-dnf5 -y install --enablerepo=terra faugus-launcher
+install_priority faugus-launcher

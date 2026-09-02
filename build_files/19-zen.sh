@@ -1,8 +1,12 @@
 #!/bin/bash
-# Zen Browser from isolated COPR sneexy/zen-browser (Fedora 44).
+# Zen Browser: not on Terra f44. Official COPR sneexy/zen-browser after Terra/Fusion/Fedora miss.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 # shellcheck source=copr-helpers.sh
 source /ctx/copr-helpers.sh
 
-copr_install_isolated "sneexy/zen-browser" zen-browser
+if ! install_any zen-browser; then
+  copr_install_isolated "sneexy/zen-browser" zen-browser
+fi

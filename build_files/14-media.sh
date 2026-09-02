@@ -1,20 +1,9 @@
 #!/bin/bash
-# mpv-nightly, yt-dlp-git, python-yt-dlp-ejs, ffmpeg from Terra f44 (verified Name:).
+# Terra f44: mpv-nightly, yt-dlp-git, python-yt-dlp-ejs, ffmpeg. Fusion ffmpeg fallback.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-TERRA=(--enablerepo=terra,terra-multimedia)
-FUSION=(--enablerepo=rpmfusion-free,rpmfusion-nonfree)
-
-dnf5 -y install "${TERRA[@]}" mpv-nightly yt-dlp-git python-yt-dlp-ejs
-
-if rpm -q ffmpeg-free >/dev/null 2>&1 && ! rpm -q ffmpeg >/dev/null 2>&1; then
-  if ! dnf5 -y swap "${TERRA[@]}" --allowerasing ffmpeg-free ffmpeg; then
-    dnf5 -y swap "${FUSION[@]}" --allowerasing ffmpeg-free ffmpeg
-  fi
-fi
-if ! rpm -q ffmpeg >/dev/null 2>&1; then
-  if ! dnf5 -y install "${TERRA[@]}" ffmpeg; then
-    dnf5 -y install "${FUSION[@]}" ffmpeg
-  fi
-fi
+install_priority mpv-nightly yt-dlp-git python-yt-dlp-ejs
+swap_ffmpeg_priority

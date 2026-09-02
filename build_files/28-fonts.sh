@@ -1,9 +1,9 @@
 #!/bin/bash
-# Fedora fonts that exist on F44 (CI 33632168916: mozilla-fira-mono-fonts,
-# adwaita-fonts, google-opensans-fonts are missing). Inter Regular is default.
-# Terra: cleartype-fonts (anda/fonts/cleartype). nerd-fonts is not a Terra Name.
+# Fedora fonts that exist on F44. Terra: cleartype-fonts (Name: %{fontname}-fonts).
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
 dnf5 -y install \
   dejavu-sans-fonts \
@@ -20,4 +20,4 @@ dnf5 -y install \
   adwaita-mono-fonts \
   google-crosextra-carlito-fonts
 
-dnf5 -y install --enablerepo=terra cleartype-fonts
+install_priority cleartype-fonts

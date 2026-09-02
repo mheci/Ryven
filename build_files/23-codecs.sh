@@ -1,14 +1,12 @@
 #!/bin/bash
-# Terra-first Mesa, ffmpeg/GStreamer, thumbnails, NVIDIA VA-API.
-# Never swap RPM Fusion mesa-*-freeworld (removes nvidia-driver).
-# Never enable terra-nvidia.
+# Terra Mesa first (never mesa-*-freeworld). ffmpeg Terra then Fusion.
+# Thumbnails: Terra icoextract-thumbnailer; python3-icoextract is Fedora.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-TERRA=(--enablerepo=terra,terra-mesa,terra-multimedia)
-FUSION=(--enablerepo=rpmfusion-free,rpmfusion-free-updates,rpmfusion-nonfree,rpmfusion-nonfree-updates)
-
-if ! dnf5 -y distro-sync "${TERRA[@]}" \
+if ! dnf5 -y distro-sync --enablerepo="${TERRA_REPOS}" \
   mesa-dri-drivers \
   mesa-va-drivers \
   mesa-vulkan-drivers \
@@ -22,20 +20,12 @@ if ! dnf5 -y distro-sync "${TERRA[@]}" \
   mesa-libGL.i686 \
   mesa-libEGL.i686 \
   mesa-libgbm.i686; then
-  echo "Terra Mesa distro-sync failed (likely NVIDIA userspace file conflict). Keeping current Mesa." >&2
+  echo "Terra Mesa distro-sync failed (NVIDIA userspace conflict). Keeping current Mesa." >&2
 fi
 
-if rpm -q ffmpeg-free >/dev/null 2>&1 && ! rpm -q ffmpeg >/dev/null 2>&1; then
-  dnf5 -y swap "${TERRA[@]}" --allowerasing ffmpeg-free ffmpeg || \
-    dnf5 -y swap "${FUSION[@]}" --allowerasing ffmpeg-free ffmpeg
-fi
-if ! rpm -q ffmpeg >/dev/null 2>&1; then
-  dnf5 -y install "${TERRA[@]}" ffmpeg || dnf5 -y install "${FUSION[@]}" ffmpeg
-fi
+swap_ffmpeg_priority
 
-dnf5 -y install "${TERRA[@]}" "${FUSION[@]}" \
-  libva-nvidia-driver.x86_64 \
-  libva-nvidia-driver.i686 \
+install_priority \
   libva \
   libva-utils \
   libvdpau \
@@ -51,17 +41,23 @@ dnf5 -y install "${TERRA[@]}" "${FUSION[@]}" \
   opus \
   ffmpegthumbnailer
 
-dnf5 -y install "${TERRA[@]}" "${FUSION[@]}" \
+if ! rpm -q libva-nvidia-driver >/dev/null 2>&1; then
+  dnf5 -y install --enablerepo="${FUSION_REPOS}" \
+    libva-nvidia-driver.x86_64 libva-nvidia-driver.i686
+fi
+
+install_priority \
   intel-media-driver \
   libva-intel-driver \
   gstreamer1-plugins-ugly \
   x264 \
   totem-video-thumbnailer \
   kdegraphics-thumbnailers \
-  icoextract-thumbnailer \
-  python3-icoextract
+  icoextract-thumbnailer
 
-dnf5 -y install --enablerepo=rpmfusion-free "${FUSION[@]}" rpmfusion-free-release-tainted
+install_any python3-icoextract
+
+dnf5 -y install --enablerepo=rpmfusion-free --enablerepo="${FUSION_REPOS}" rpmfusion-free-release-tainted
 dnf5 -y install --enablerepo=rpmfusion-free-tainted libdvdcss
 shopt -s nullglob
 for repo in /etc/yum.repos.d/*tainted*.repo; do

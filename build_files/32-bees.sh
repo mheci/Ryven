@@ -1,9 +1,11 @@
 #!/bin/bash
-# bees from Fedora. Instantiate beesd@UUID on the btrfs UUID of /var/home.
+# bees: Fedora (not Terra f44). Instantiate beesd@UUID on host btrfs.
 
 set -ouex pipefail
+# shellcheck source=repo-priority.sh
+source /ctx/repo-priority.sh
 
-dnf5 -y install bees
+install_priority bees
 
 mkdir -p /usr/lib/systemd/system-generators /usr/libexec /etc/bees
 
