@@ -105,6 +105,9 @@ jobs:
           curl -fsSL -o /tmp/cst \
             "https://github.com/GoogleContainerTools/container-structure-test/releases/download/${CST_VER}/container-structure-test-linux-amd64"
           chmod +x /tmp/cst
+          export TMPDIR="${RUNNER_TEMP}"
+          export TMP="${RUNNER_TEMP}"
+          export TEMP="${RUNNER_TEMP}"
           tar_path="${RUNNER_TEMP}/ryven.tar"
           podman save -o "${tar_path}" "${IMAGE_NAME}:${DEFAULT_TAG}"
           /tmp/cst test --driver tar --image "${tar_path}" \
