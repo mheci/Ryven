@@ -5,7 +5,7 @@ COPY system_files /system_files
 
 # Prebuilt signed kmods for the OGC kernel (Fedora 44).
 # Kernel RPMs come from ghcr.io/opengamingcollective/kernel-packages-fedora:latest-fc44
-# (OCI RPM artifact; extracted with skopeo in 05-nvidia-open.sh).
+# (OCI RPM artifact; extracted with skopeo in build.sh).
 FROM ghcr.io/ublue-os/akmods:ogc-44 AS akmods
 FROM ghcr.io/ublue-os/akmods-extra:ogc-44 AS akmods-extra
 FROM ghcr.io/ublue-os/akmods-nvidia-open:ogc-44 AS akmods-nvidia
