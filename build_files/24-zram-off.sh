@@ -3,10 +3,11 @@
 
 set -ouex pipefail
 
-dnf5 -y remove zram-generator-defaults zram-generator || true
+if rpm -q zram-generator-defaults >/dev/null 2>&1 || rpm -q zram-generator >/dev/null 2>&1; then
+  dnf5 -y remove zram-generator-defaults zram-generator
+fi
 mkdir -p /usr/lib/systemd /etc/systemd/system
-# Empty generator config means no zram device.
 printf '%s\n' '# Ryven: zram disabled. Compressed RAM is zswap (see kargs.d/10-zswap.toml).' \
   >/usr/lib/systemd/zram-generator.conf
-ln -sf /dev/null /etc/systemd/system/systemd-zram-setup@zram0.service || true
-systemctl mask systemd-zram-setup@zram0.service || true
+ln -sfn /dev/null /etc/systemd/system/systemd-zram-setup@zram0.service
+systemctl mask systemd-zram-setup@zram0.service

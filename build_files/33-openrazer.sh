@@ -3,12 +3,6 @@
 
 set -ouex pipefail
 
-dnf5 -y install --enablerepo=terra --skip-unavailable --skip-broken \
-  openrazer-daemon \
-  python3-openrazer \
-  python-openrazer \
-  openrazer-meta \
-  polychromatic \
-  razergenie || true
-
-groupadd -r plugdev || true
+dnf5 -y install --enablerepo=terra openrazer-daemon python3-openrazer
+dnf5 -y install --enablerepo=terra polychromatic
+getent group plugdev >/dev/null || groupadd -r plugdev

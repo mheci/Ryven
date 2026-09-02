@@ -1,15 +1,14 @@
 #!/bin/bash
-# Terra-first Mesa (codec-complete), ffmpeg/GStreamer, thumbnails, NVIDIA VA-API.
+# Terra-first Mesa, ffmpeg/GStreamer, thumbnails, NVIDIA VA-API.
 # Never swap RPM Fusion mesa-*-freeworld (removes nvidia-driver).
-# Never enable terra-nvidia (Negativo17 CUDA/drivers).
+# Never enable terra-nvidia.
 
 set -ouex pipefail
 
 TERRA=(--enablerepo=terra,terra-mesa,terra-multimedia)
 FUSION=(--enablerepo=rpmfusion-free,rpmfusion-free-updates,rpmfusion-nonfree,rpmfusion-nonfree-updates)
 
-# Terra Mesa stream (priority 80). Abort if the transaction would drop NVIDIA userspace.
-if ! dnf5 -y distro-sync --skip-unavailable "${TERRA[@]}" \
+if ! dnf5 -y distro-sync "${TERRA[@]}" \
   mesa-dri-drivers \
   mesa-va-drivers \
   mesa-vulkan-drivers \
@@ -23,51 +22,47 @@ if ! dnf5 -y distro-sync --skip-unavailable "${TERRA[@]}" \
   mesa-libGL.i686 \
   mesa-libEGL.i686 \
   mesa-libgbm.i686; then
-  echo "WARN: Terra Mesa distro-sync skipped (NVIDIA/Mesa conflict or missing pkgs)"
+  echo "Terra Mesa distro-sync failed (likely NVIDIA userspace file conflict). Keeping current Mesa." >&2
 fi
 
-if rpm -q ffmpeg-free >/dev/null 2>&1; then
-  dnf5 -y swap "${TERRA[@]}" --allowerasing ffmpeg-free ffmpeg \
-    || dnf5 -y swap "${FUSION[@]}" --allowerasing ffmpeg-free ffmpeg \
-    || true
+if rpm -q ffmpeg-free >/dev/null 2>&1 && ! rpm -q ffmpeg >/dev/null 2>&1; then
+  dnf5 -y swap "${TERRA[@]}" --allowerasing ffmpeg-free ffmpeg || \
+    dnf5 -y swap "${FUSION[@]}" --allowerasing ffmpeg-free ffmpeg
 fi
-dnf5 -y install --skip-unavailable "${TERRA[@]}" ffmpeg \
-  || dnf5 -y install --skip-unavailable "${FUSION[@]}" ffmpeg \
-  || true
+if ! rpm -q ffmpeg >/dev/null 2>&1; then
+  dnf5 -y install "${TERRA[@]}" ffmpeg || dnf5 -y install "${FUSION[@]}" ffmpeg
+fi
 
-# Skip Fusion x265 / gstreamer1-plugins-bad-freeworld (libx265.so.215 vs x265-libs 4.2).
-# Skip pipewire-codec-aptx (conflicts pipewire-libs-extra).
-# Skip ffmpegthumbs (pulls KDE Frameworks); use ffmpegthumbnailer.
-# NVIDIA HVA: libva-nvidia-driver (Fedora), not terra-nvidia kmods.
-# Mesa VA/VDPAU comes from terra-mesa above, not Fusion freeworld.
-dnf5 -y install --skip-unavailable --skip-broken "${TERRA[@]}" "${FUSION[@]}" \
+dnf5 -y install "${TERRA[@]}" "${FUSION[@]}" \
   libva-nvidia-driver.x86_64 \
   libva-nvidia-driver.i686 \
-  intel-media-driver \
-  libva-intel-driver \
   libva \
   libva-utils \
   libvdpau \
   vdpauinfo \
-  gstreamer1-plugins-ugly \
   gstreamer1-plugin-libav \
   gstreamer1-plugin-openh264 \
   gstreamer1-vaapi \
   mozilla-openh264 \
-  x264 \
   dav1d \
   aom \
   svt-av1 \
   lame \
   opus \
-  ffmpegthumbnailer \
+  ffmpegthumbnailer
+
+dnf5 -y install "${TERRA[@]}" "${FUSION[@]}" \
+  intel-media-driver \
+  libva-intel-driver \
+  gstreamer1-plugins-ugly \
+  x264 \
   totem-video-thumbnailer \
   kdegraphics-thumbnailers \
   icoextract-thumbnailer \
-  python3-icoextract || true
+  python3-icoextract
 
-dnf5 -y install "${FUSION[@]}" rpmfusion-free-release-tainted || true
-dnf5 -y install --enablerepo=rpmfusion-free-tainted libdvdcss || true
+dnf5 -y install --enablerepo=rpmfusion-free "${FUSION[@]}" rpmfusion-free-release-tainted
+dnf5 -y install --enablerepo=rpmfusion-free-tainted libdvdcss
 shopt -s nullglob
 for repo in /etc/yum.repos.d/*tainted*.repo; do
   sed -i 's/^enabled=1/enabled=0/' "${repo}"

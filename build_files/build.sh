@@ -43,6 +43,7 @@ cp -avf "/ctx/system_files"/. /
 /ctx/36-uupd.sh
 /ctx/37-flatpaks.sh
 /ctx/38-terra-stack.sh
+/ctx/39-proton-cachyos.sh
 /ctx/22-goss.sh
 
 ### Install packages

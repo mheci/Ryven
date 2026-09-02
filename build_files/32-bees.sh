@@ -3,13 +3,7 @@
 
 set -ouex pipefail
 
-dnf5 -y install --skip-unavailable bees || \
-  dnf5 -y install --enablerepo=terra --skip-unavailable bees || true
-
-if ! command -v beesd >/dev/null && ! command -v bees >/dev/null; then
-  echo "bees not available; skip unit" >&2
-  exit 0
-fi
+dnf5 -y install --enablerepo=terra bees
 
 mkdir -p /usr/lib/systemd/system
 cat >/usr/lib/systemd/system/ryven-bees.service <<'EOF'
@@ -47,15 +41,14 @@ EOF
 cat >/usr/libexec/ryven-bees <<'EOF'
 #!/bin/bash
 set -euo pipefail
-# Dedup Steam compatdata if present; never fail the boot.
 shopt -s nullglob
 for home in /var/home/* /home/*; do
   compat="${home}/.local/share/Steam/steamapps/compatdata"
   [[ -d ${compat} ]] || continue
   if command -v beesd >/dev/null; then
-    ionice -c3 beesd --scan "${compat}" || true
-  elif command -v bees >/dev/null; then
-    ionice -c3 bees "${compat}" || true
+    ionice -c3 beesd --scan "${compat}"
+  else
+    ionice -c3 bees "${compat}"
   fi
 done
 EOF

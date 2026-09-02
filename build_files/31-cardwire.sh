@@ -3,5 +3,5 @@
 
 set -ouex pipefail
 
-dnf5 -y install --enablerepo=terra --skip-unavailable --skip-broken cardwire
-systemctl enable cardwired.service || true
+dnf5 -y install --enablerepo=terra cardwire
+systemctl enable cardwired.service

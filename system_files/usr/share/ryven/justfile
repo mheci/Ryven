@@ -61,7 +61,7 @@ scx-select scheduler="" start="0":
       echo "Installed sched-ext userspace binaries:"
       printf '  %s\n' "${AVAIL[@]:-none}"
       echo "Usage: ujust scx-select scheduler=scx_lavd start=1"
-      echo "Loader stays disabled until start=1. Never reboots."
+      echo "Image default is scx_lavd enabled at boot. Never reboots."
       exit 0
     fi
     WANT="{{ scheduler }}"

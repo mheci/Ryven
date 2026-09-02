@@ -20,14 +20,13 @@ cat >/etc/default/grub.d/50-ryven.cfg <<'EOF'
 GRUB_DISTRIBUTOR="Ryven"
 EOF
 
-if [[ -d /usr/share/plymouth/themes/spinner ]]; then
-  cp -f /usr/share/pixmaps/ryven.png /usr/share/plymouth/themes/spinner/watermark.png || true
+if [[ -d /usr/share/plymouth/themes/spinner && -f /usr/share/pixmaps/ryven.png ]]; then
+  cp -f /usr/share/pixmaps/ryven.png /usr/share/plymouth/themes/spinner/watermark.png
 fi
 
-# Prefer Ryven look-and-feel over Fedora/Breeze for first login.
 if [[ -d /usr/share/plasma/look-and-feel/org.ryven.desktop ]]; then
   mkdir -p /etc/xdg
-  if [[ -f /usr/libexec/plasma-set-default-lookandfeel ]]; then
-    /usr/libexec/plasma-set-default-lookandfeel org.ryven.desktop || true
+  if [[ -x /usr/libexec/plasma-set-default-lookandfeel ]]; then
+    /usr/libexec/plasma-set-default-lookandfeel org.ryven.desktop
   fi
 fi

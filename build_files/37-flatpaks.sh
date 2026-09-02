@@ -3,14 +3,13 @@
 
 set -ouex pipefail
 
-dnf5 -y install --skip-unavailable flatpak || true
-command -v flatpak >/dev/null || exit 0
+dnf5 -y install flatpak
 
 flatpak remote-add --if-not-exists --system flathub \
-  https://dl.flathub.org/repo/flathub.flatpakrepo || true
+  https://dl.flathub.org/repo/flathub.flatpakrepo
 
 flatpak install --system --noninteractive --or-update flathub \
   com.github.tchx84.Flatseal \
   io.github.flattool.Warehouse \
   it.mijorus.gearlever \
-  io.github.kolunmi.Bazaar || true
+  io.github.kolunmi.Bazaar

@@ -1,6 +1,6 @@
 #!/bin/bash
-# Zed editor from Terra (Fedora 44).
+# Zed editor from Terra.
 
 set -ouex pipefail
 
-dnf5 -y install --enablerepo=terra --skip-unavailable zed
+dnf5 -y install --enablerepo=terra zed

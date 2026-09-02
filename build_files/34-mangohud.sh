@@ -1,13 +1,16 @@
 #!/bin/bash
-# MangoHud + OBS VkCapture (64-bit and 32-bit when available).
+# MangoHud + OBS VkCapture. 32-bit only if the repo actually has it.
 
 set -ouex pipefail
 
-dnf5 -y install --skip-unavailable --skip-broken \
-  mangohud \
-  mangohud.i686 \
-  goverlay \
-  obs-vkcapture \
-  obs-vkcapture.i686 \
-  libobs_vkcapture \
-  libobs_glcapture || true
+dnf5 -y install mangohud obs-vkcapture
+
+if dnf5 list --available mangohud.i686 >/dev/null 2>&1; then
+  dnf5 -y install mangohud.i686
+fi
+if dnf5 list --available obs-vkcapture.i686 >/dev/null 2>&1; then
+  dnf5 -y install obs-vkcapture.i686
+fi
+if dnf5 list --available goverlay >/dev/null 2>&1; then
+  dnf5 -y install goverlay
+fi
