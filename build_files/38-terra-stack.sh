@@ -10,7 +10,7 @@ source /ctx/copr-helpers.sh
 
 install_any ghostty-tip ghostty
 install_priority \
-  t3code-nightly \
+  t3code \
   heroic-games-launcher \
   protonplus \
   terra-gamescope \

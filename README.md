@@ -40,7 +40,7 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
 - **scx-scheds-nightly** + **scx-tools-nightly** / `scx_loader` with lavd `--performance`
 - **bpftune-gaming** and **ananicy-cpp** + CachyOS rules
 - beesd@UUID on host btrfs, NVMe kyber / HDD bfq
-- **mpv-nightly**, Terra ffmpeg, **t3code-nightly**, zed-nightly, ghostty-tip
+- **mpv**, Terra ffmpeg, **t3code**, **zed**, ghostty-tip
 - uupd + topgrade (no auto-reboot)
 - First-boot Flatpaks on `/var`: Flatseal, Warehouse, Gear Lever, Bazaar
 

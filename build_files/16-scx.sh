@@ -1,11 +1,11 @@
 #!/bin/bash
-# Terra f44: scx-scheds-nightly + scx-tools-nightly (scx_loader). lavd max performance.
+# Terra f44: scx-scheds + scx-tools (scx_loader). lavd max performance.
 
 set -ouex pipefail
 # shellcheck source=repo-priority.sh
 source /ctx/repo-priority.sh
 
-install_priority scx-scheds-nightly scx-tools-nightly
+install_priority scx-scheds scx-tools
 
 mkdir -p /etc
 cat >/etc/scx_loader.toml <<'EOF'
@@ -28,8 +28,8 @@ if [[ ! -f /etc/default/scx ]]; then
 fi
 
 if [[ ! -f /usr/lib/systemd/system/scx_loader.service ]]; then
-  echo "scx-tools-nightly did not ship scx_loader.service" >&2
-  rpm -ql scx-tools-nightly | head -80 >&2
+  echo "scx-tools did not ship scx_loader.service" >&2
+  rpm -ql scx-tools | head -80 >&2
   exit 1
 fi
 systemctl enable scx_loader.service
