@@ -10,12 +10,16 @@
 
 `ghcr.io/mheci/ryven:latest` on `ghcr.io/ublue-os/kinoite-main` (Fedora **44** KDE). Plasma Login Manager (`plasmalogin`), not SDDM.
 
-`ghcr.io/mheci/ryven-wl:latest` on `ghcr.io/ublue-os/base-main` (no DE). **Hyprland** + **QuickShell**, greetd/tuigreet + UWSM. Latest Hyprland stack from COPR `nett00n/hyprland` at compose time. Master layout, tearing + `preferred` (max res/refresh) on all monitors. Clipboard: wl-clipboard, cliphist, wl-clip-persist. Notifications: dunst. Portals: xdg-desktop-portal-hyprland. Screenshots: grim/slurp/satty/hyprshot. Phone: KDE Connect. NVIDIA: `NVD_BACKEND=direct`, GBM nvidia-drm — not `LIBVA_DRIVER_NAME=nvidia`. GPU: ublue `akmods` / `akmods-extra` / `akmods-nvidia-open` (`ogc-44`) plus OGC `kernel-packages-fedora:latest-fc44`. **zswap on**, **zram off**. Look: `org.ryven.desktop`, Darkly, Breeze icons, Inter Regular, wallpaper **10**. ISO is weekly after the scheduled OCI build.
+`ghcr.io/mheci/ryven-wl:latest` on `ghcr.io/ublue-os/base-main` (no DE). **Hyprland** + **QuickShell**, greetd/tuigreet + UWSM. Latest Hyprland stack from COPR `nett00n/hyprland` at compose time. Master layout, tearing + `preferred` (max res/refresh) on all monitors. Clipboard: wl-clipboard, cliphist, wl-clip-persist. Notifications: dunst. Portals: xdg-desktop-portal-hyprland. Screenshots: grim/slurp/satty/hyprshot. Phone: KDE Connect. NVIDIA: `NVD_BACKEND=direct`, GBM nvidia-drm — not `LIBVA_DRIVER_NAME=nvidia`.
+
+`ghcr.io/mheci/ryven-sericea:latest` on `ghcr.io/ublue-os/sericea-main` (Fedora **Sway** Atomic). Same NVIDIA/gaming/agent stack. Tearing + preferred output mode, dunst, cliphist, KDE Connect, xdg-desktop-portal-wlr. GPU: ublue `akmods` / `akmods-extra` / `akmods-nvidia-open` (`ogc-44`) plus OGC `kernel-packages-fedora:latest-fc44`. **zswap on**, **zram off**. Look: `org.ryven.desktop`, Darkly, Breeze icons, Inter Regular, wallpaper **10**. ISO is weekly after the scheduled OCI build.
 
 ## Switch
 
 ```bash
 sudo bootc switch ghcr.io/mheci/ryven:latest
+# or: ghcr.io/mheci/ryven-wl:latest
+# or: ghcr.io/mheci/ryven-sericea:latest
 sudo bootc upgrade          # stage only — do not pass --apply
 ```
 

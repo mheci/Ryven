@@ -35,6 +35,10 @@ jobs:
             containerfile: Containerfile.wl
             goss: ci/goss-wl.yaml
             cst: ci/container-structure-test-wl.yaml
+          - image: ryven-sericea
+            containerfile: Containerfile.sericea
+            goss: ci/goss-sericea.yaml
+            cst: ci/container-structure-test-sericea.yaml
 
     permissions:
       contents: read
@@ -138,9 +142,12 @@ jobs:
           GOSS_VER: v0.4.10
         run: |
           set -euo pipefail
-          curl -fsSL -o /tmp/goss \
-            "https://github.com/goss-org/goss/releases/download/${GOSS_VER}/goss-linux-amd64"
+          ver="${GOSS_VER#v}"
+          curl -fsSL -o /tmp/goss.tgz \
+            "https://github.com/goss-org/goss/releases/download/${GOSS_VER}/goss_${ver}_linux_x86_64.tar.gz"
+          tar -xzf /tmp/goss.tgz -C /tmp
           chmod +x /tmp/goss
+          test -x /tmp/goss
           podman run --rm \
             --entrypoint /bin/bash \
             -v /tmp/goss:/goss:ro \

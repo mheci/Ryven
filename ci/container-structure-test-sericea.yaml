@@ -1,0 +1,15 @@
+schemaVersion: "2.0.0"
+fileExistenceTests:
+  - name: sway overlay
+    path: /usr/share/sway/config.d/50-ryven.conf
+    shouldExist: true
+  - name: nvidia kargs
+    path: /usr/lib/bootc/kargs.d/00-nvidia.toml
+    shouldExist: true
+commandTests:
+  - name: sway rpm
+    command: rpm
+    args: ["-q", "sway"]
+  - name: tearing
+    command: grep
+    args: ["-q", "allow_tearing yes", "/usr/share/sway/config.d/50-ryven.conf"]
