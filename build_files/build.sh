@@ -738,8 +738,8 @@ if ! install_priority gpu-screen-recorder; then
   copr_install_isolated brycensranch/gpu-screen-recorder-git gpu-screen-recorder
 fi
 install_priority bibata-cursor-theme klassy tela-icon-theme
-[[ -f /usr/lib/systemd/system/bpftune.service ]] \
-  || die 'bpftune-gaming missing bpftune.service'
+[[ -f /usr/lib/systemd/system/bpftune.service ]] ||
+   die 'bpftune-gaming missing bpftune.service'
 systemctl enable bpftune.service ananicy-cpp.service
 
 # Pinned CachyOS Proton SLR tarball. sha512sum file lists the tar name without
