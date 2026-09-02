@@ -20,7 +20,7 @@ package:
 
 command:
   no-libva-nvidia-env:
-    exec: grep -r LIBVA_DRIVER_NAME=nvidia /usr/share/sway /usr/lib/environment.d
+    exec: grep -rE '^[[:space:]]*LIBVA_DRIVER_NAME=nvidia' /usr/share/sway /usr/lib/environment.d
     exit-status: 1
   no-docker:
     exec: rpm -q docker
