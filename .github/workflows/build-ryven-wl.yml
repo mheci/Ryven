@@ -9,7 +9,10 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 6 * * 0'
+    # Weekly rebuild/update every Saturday (06:00 UTC) so the image always
+    # tracks the current Fedora 44 release tip (floating :44 base + refresh
+    # upgrade in the build).
+    - cron: '0 6 * * 6'
   push:
     branches:
       - main
