@@ -198,6 +198,31 @@ restore_kernel_install_hooks() {
   )
 }
 
+# akmods 0.6.2 (F44) regression: the akmod-nvidia %post scriptlet invokes
+# /usr/sbin/akmods-ostree-post, which calls akmodsbuild directly as root.
+# akmodsbuild 0.6.2 refuses to run as root ("Not to be used as root; start
+# as user or 'akmodsbuild' instead"), the scriptlet fails, and dnf5 marks
+# the whole install transaction failed. The main akmods script already
+# carries the upstream privilege-drop pattern: chown the build tmpdir to
+# the akmods user, unset TMPDIR (misused by runuser, rfbz#2596), then run
+# akmodsbuild via runuser as the akmods user. Apply the same pattern to
+# the ostree-post helper so the kmod builds correctly during dnf5 install.
+# Must run before the dnf5 transaction that installs akmod-nvidia.
+fix_akmods_ostree_post() {
+  local ostree_post=/usr/sbin/akmods-ostree-post
+  [[ -f ${ostree_post} ]] || return 0
+  if grep -q 'runuser' "${ostree_post}"; then
+    return 0
+  fi
+  # Note: '&' is special in the sed replacement (it means "the match"), so
+  # the shell '&&' chain must be written as '\&\&' here.
+  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
+    die "failed to patch ${ostree_post}"
+  fi
+  grep -q '/usr/sbin/runuser' "${ostree_post}" || die "akmods-ostree-post privilege-drop patch did not apply"
+  bash -n "${ostree_post}" || die "patched ${ostree_post} failed syntax check"
+}
+
 # Install the CachyOS kernel set from COPR over the Fedora kernel set.
 # Base set (kernel-cachyos + devel-matched) is fatal; modules-extra and the
 # unmatched devel are best-effort so a renamed subpackage cannot fail the

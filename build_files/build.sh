@@ -229,6 +229,13 @@ unit_enabled() {
   [[ "$(systemctl is-enabled "$1" 2>/dev/null || true)" == "enabled" ]]
 }
 
+# The ublue base image ships /usr/local as a placeholder file, and
+# `cp -avf` cannot lay a directory over a file. Replace the placeholder so
+# system_files usr/local entries land cleanly.
+if [[ -e /usr/local && ! -d /usr/local ]]; then
+  rm -f /usr/local
+fi
+
 # Overlay /ctx/system_files onto the image root. Paths here are the source of
 # truth for kargs.d, environment.d, udev, sysctl, Plasma, justfiles, pixmaps.
 cp -avf /ctx/system_files/. /
@@ -325,12 +332,26 @@ KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | L
 # Secure Boot hosts must enroll their own MOK and sign it, or disable
 # Secure Boot.
 dnf5 -y install gcc make clang llvm
+# Install the akmods tooling first: the akmod-nvidia %post (which runs
+# inside the fusion transaction below) invokes
+# /usr/sbin/akmods-ostree-post, which only exists once the akmods package
+# is in place.
+dnf5 -y install akmods
+# The akmod-nvidia %post builds the kmod inside that transaction; make the
+# build work before the transaction runs (see fix_akmods_ostree_post).
+fix_akmods_ostree_post
 dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" \
   akmod-nvidia \
   xorg-x11-drv-nvidia xorg-x11-drv-nvidia-libs \
   xorg-x11-drv-nvidia-libs.i686 \
   xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-cuda-libs \
   xorg-x11-drv-nvidia-cuda-libs.i686
+# akmods init() opens /run/akmods/akmods.lock; the package's tmpfiles.d line
+# (d /run/akmods 0770 root akmods) is normally applied by systemd at boot,
+# so create it for this unbooted compose container.
+mkdir -p /run/akmods
+chown root:akmods /run/akmods
+chmod 0770 /run/akmods
 akmods --force --kernels "${KVER}"
 if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
   # Dump the akmod build log before failing so CI stdout shows the real
