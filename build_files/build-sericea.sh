@@ -123,24 +123,18 @@ dnf5 -y install --enablerepo=fedora-nvidia "${NVIDIA_EXCLUDE_REPOS[@]}" \
 mkdir -p /run/akmods
 chown root:akmods /run/akmods
 chmod 0770 /run/akmods
-# CC=clang: the CachyOS LTO kernel tree is clang-built and its saved CFLAGS
-# carry clang-only options (observed: -mretpoline-external-thunk,
-# -fexperimental-late-parse-attributes, -fsplit-lto-unit,
-# -mstack-alignment=8 all rejected by gcc); the module must be built with
-# the same compiler family as the kernel.
-# LD=ld.lld: the kernel's LTO config adds `-mllvm ...` to KBUILD_LDFLAGS;
-# ld.bfd parses -mllvm as `-m llvm` ("unrecognised emulation mode: llvm"),
-# lld accepts it natively.
-# KCFLAGS="-fno-lto -fno-split-lto-unit": the kernel CFLAGS enable thin LTO,
-# which makes module .o files LLVM bitcode that `ld -r` partial links cannot
-# read. KCFLAGS is appended after the kernel CFLAGS, so the module objects
-# are plain ELF (standard non-LTO-module-against-LTO-kernel combination).
-# MAKEFLAGS: parallel make for the kernel-module build.
+# Toolchain note (full rationale in fix_akmods_ostree_post): the kernel
+# Makefile picks the module toolchain from LLVM (ifneq ($(LLVM),) ->
+# CC=clang/LD=ld.lld, else CC=gcc/LD=ld); plain CC/LD env vars are
+# overridden by those Makefile assignments, so the patched scriptlet sets
+# LLVM=1, plus KCFLAGS (non-LTO plain-ELF module objects) and MAKEFLAGS
+# (parallel make).
 # The nvidia %post (patched scriptlet) normally already built the kmod. If
 # it is missing, build it explicitly via the same patched scriptlet. The
-# `akmods` client is NOT usable for this: its internal runuser call drops
-# the CC/LD/KCFLAGS environment, so the module link would hit the kernel's
-# clang-LTO -mllvm flag under ld.bfd again.
+# `akmods` client is NOT usable for this: it cannot carry the LLVM=1 and
+# KCFLAGS settings into akmodsbuild the way the patched scriptlet does (its
+# runuser -c invocation resets the environment), so the build would use
+# gcc/ld.bfd against the kernel's clang-LTO CFLAGS.
 if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
   nvsrpm=$(ls /usr/src/akmods/nvidia-kmod-*.src.rpm 2>/dev/null | LC_ALL=C sort -V | tail -n1)
   [[ -n ${nvsrpm} ]] || die 'nvidia akmod SRPM not found under /usr/src/akmods'
@@ -332,10 +326,10 @@ fi
 fix_akmods_ostree_post
 if have_rpm akmod-openrazer; then
   if ! find "/usr/lib/modules/${KVER}" -name 'openrazer*.ko*' -print -quit | grep -q .; then
-    # Build via the patched scriptlet (same path as the %post): the
-    # `akmods` client's internal runuser call drops the CC/LD/KCFLAGS
-    # environment, breaking the link under ld.bfd + the kernel's -mllvm
-    # LTO flag.
+    # Build via the patched scriptlet (same path as the %post): it carries
+    # LLVM=1/KCFLAGS into akmodsbuild (env reset by the akmods client's
+    # runuser -c call would otherwise leave gcc/ld.bfd against the
+    # kernel's clang-LTO CFLAGS).
     orzsrpm=$(ls /usr/src/akmods/openrazer-kmod-*.src.rpm 2>/dev/null | LC_ALL=C sort -V | tail -n1)
     [[ -n ${orzsrpm} ]] || die 'openrazer akmod SRPM not found under /usr/src/akmods'
     /usr/sbin/akmods-ostree-post openrazer "${orzsrpm}"

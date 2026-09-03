@@ -214,29 +214,32 @@ fix_akmods_ostree_post() {
   if grep -q 'runuser' "${ostree_post}"; then
     return 0
   fi
-  # Env prefix on the akmodsbuild invocation (env vars beat the kernel
-  # Makefile's predefined CC/LD assignments, so these steer the whole
-  # module toolchain):
-  #  CC=clang: the CachyOS LTO kernel tree is clang-built; its saved CFLAGS
-  #    carry clang-only options, so the module must be built with the same
-  #    compiler family as the kernel.
-  #  LD=ld.lld: for CONFIG_LTO_CLANG the kernel Makefile unconditionally
-  #    adds `-mllvm -import-instr-limit=5` (and the lld-only
-  #    --lto-whole-program-visibility) to KBUILD_LDFLAGS for every module
-  #    link. With the default LD=ld.bfd, `-mllvm` is parsed as `-m llvm`
-  #    and ld.bfd dies with "unrecognised emulation mode: llvm". lld
-  #    understands both flags natively.
+  # Env prefix on the akmodsbuild invocation. The kernel Makefile selects
+  # the module toolchain from the LLVM variable: `ifneq ($(LLVM),)` ->
+  # CC=clang, LD=ld.lld, AR=llvm-ar, ... else CC=gcc, LD=ld. Plain CC/LD
+  # env vars do NOT steer it: Makefile variable assignments override
+  # environment variables (observed: an openrazer kmod compiled with gcc
+  # and died on the kernel's clang-only CFLAGS while the KCFLAGS/MAKEFLAGS
+  # env vars were honored). With LLVM=1:
+  #  - the toolchain is clang/ld.lld, matching the clang+LTO x86_64_v3
+  #    kernel whose saved CFLAGS carry clang-only options
+  #    (-mstack-alignment=8, -mretpoline-external-thunk,
+  #    -fexperimental-late-parse-attributes, -fsplit-lto-unit);
+  #  - the LTO config's unconditional `-mllvm -import-instr-limit=5` (and
+  #    lld-only --lto-whole-program-visibility) in KBUILD_LDFLAGS is
+  #    handled natively by ld.lld (ld.bfd parses -mllvm as `-m llvm` =
+  #    --emulation and dies: "unrecognised emulation mode: llvm").
   #  KCFLAGS="-fno-lto -fno-split-lto-unit": the kernel CFLAGS enable thin
-  #    LTO (-flto=thin -fsplit-lto-unit), which makes the .o files LLVM
-  #    bitcode that plain `ld -r` partial links cannot read. KCFLAGS is
-  #    appended by the kernel Makefile after the kernel CFLAGS, so -fno-lto
-  #    wins and the module objects are plain ELF again. Non-LTO modules
-  #    against an LTO kernel are the standard supported combination.
+  #    LTO (-flto=thin -fsplit-lto-unit), which would make the module .o
+  #    files LLVM bitcode. KCFLAGS is appended by the kernel Makefile
+  #    after the kernel CFLAGS, so -fno-lto wins and the module objects
+  #    are plain ELF again (non-LTO modules against an LTO kernel is the
+  #    standard supported combination).
   #  MAKEFLAGS="-j$(nproc)": parallel kernel-module make ($(nproc) expands
   #    at scriptlet runtime, i.e. the build container's core count).
   # Note: '&' is special in the sed replacement (it means "the match"), so
   # the shell '&&' chain must be written as '\&\&' here.
-  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& CC=clang LD=ld.lld KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
+  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& LLVM=1 KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
     die "failed to patch ${ostree_post}"
   fi
   grep -q '/usr/sbin/runuser' "${ostree_post}" || die "akmods-ostree-post privilege-drop patch did not apply"
