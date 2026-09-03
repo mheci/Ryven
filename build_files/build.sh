@@ -340,6 +340,52 @@ rpm -q kernel-cachyos-lto-core >/dev/null ||
 KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | LC_ALL=C sort -V | tail -n1)
 [[ -n "${KVER}" ]] || die 'cannot determine installed CachyOS kernel version'
 
+# This script is self-contained (it does NOT source common.sh); the
+# helpers below are local copies of the common.sh definitions used by the
+# sections that follow.
+#
+# akmods 0.6.2 (F44) regression fix: the akmod-nvidia %post scriptlet
+# invokes /usr/sbin/akmods-ostree-post, which calls akmodsbuild directly
+# as root. akmodsbuild 0.6.2 refuses to run as root ("Not to be used as
+# root; start as user or 'akmodsbuild' instead"), the scriptlet fails, and
+# dnf5 fails the whole install transaction. The main akmods script already
+# carries the upstream privilege-drop pattern: chown the build tmpdir to
+# the akmods user, unset TMPDIR (misused by runuser, rfbz#2596), then run
+# akmodsbuild via runuser as the akmods user. Apply the same pattern to
+# the ostree-post helper so the kmod builds correctly during dnf5 install.
+# Must run before the dnf5 transaction that installs akmod-nvidia.
+fix_akmods_ostree_post() {
+  local ostree_post=/usr/sbin/akmods-ostree-post
+  [[ -f ${ostree_post} ]] || return 0
+  if grep -q 'runuser' "${ostree_post}"; then
+    return 0
+  fi
+  # Note: '&' is special in the sed replacement (it means "the match"), so
+  # the shell '&&' chain must be written as '\&\&' here.
+  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& CC=clang /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
+    die "failed to patch ${ostree_post}"
+  fi
+  grep -q '/usr/sbin/runuser' "${ostree_post}" || die "akmods-ostree-post privilege-drop patch did not apply"
+  bash -n "${ostree_post}" || die "patched ${ostree_post} failed syntax check"
+}
+
+# SELinux gaming setup: the booleans Proton/Wine gaming needs (JIT module
+# loading, JIT execmem, cheap execmem) plus domain_kernel_load_modules for
+# the akmod-built nvidia module. `semanage boolean -m --on` changes the
+# policy default (preferred); `setsebool -P ... 1` persists the current
+# value (fallback). Each boolean is applied independently and is
+# non-fatal with a warning so one unavailable boolean cannot block the rest.
+apply_selinux_game_booleans() {
+  local b
+  for b in selinuxuser_execmod selinuxuser_execstack selinuxuser_execheap domain_kernel_load_modules; do
+    if command -v semanage >/dev/null 2>&1 && semanage boolean -m --on "${b}" >/dev/null 2>&1; then
+      continue
+    fi
+    setsebool -P "${b}" 1 2>/dev/null || echo "SELinux boolean ${b} unavailable" >&2
+  done
+  return 0
+}
+
 # NVIDIA kernel modules built for the CachyOS kernel via RPMFusion akmod.
 # The ublue prebuilt kmod-nvidia targets the OGC kernel and the CachyOS COPR
 # ships no prebuilt NVIDIA modules (per COPR policy use RPMFusion or
@@ -369,7 +415,12 @@ dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}
 mkdir -p /run/akmods
 chown root:akmods /run/akmods
 chmod 0770 /run/akmods
-akmods --force --kernels "${KVER}"
+# CC=clang: the CachyOS LTO kernel tree is clang-built and its saved CFLAGS
+# carry clang-only options (observed: -mretpoline-external-thunk,
+# -fexperimental-late-parse-attributes, -fsplit-lto-unit,
+# -mstack-alignment=8 all rejected by gcc); the module must be built with
+# the same compiler family as the kernel.
+CC=clang akmods --force --kernels "${KVER}"
 if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
   # Dump the akmod build log before failing so CI stdout shows the real
   # compiler error instead of just the missing .ko.
@@ -638,9 +689,50 @@ EOF
 # Template user profile (copy via `ujust falcond-profile name=<game-exe>`).
 install -D -m 0644 /usr/share/ryven/falcond/ryven-gaming-template.conf \
   /usr/share/falcond/profiles/user/ryven-gaming-template.conf
-# BetterBird: latest x86_64 release pulled at compose time (see
-# install_betterbird in common.sh); desktop entry + icon ship in
-# system_files.
+# BetterBird (betterbird.eu) — Thunderbird fork. Not in any Fedora repo, so
+# the LATEST x86_64 release is pulled at compose time (weekly CI rebuilds =
+# always current on the published image). The official download site is an
+# auto-generated file listing; the current release of each ESR line carries
+# a "-latest-" marker, which we prefer. The project publishes no checksums
+# (verified 2026-09), so integrity rests on HTTPS from betterbird.eu; the
+# build fails closed on any download/extract error or missing binary.
+# (Local copy of the common.sh definition; this script does not source it.)
+readonly BETTERBIRD_BASE='https://www.betterbird.eu/downloads'
+
+install_betterbird() {
+  local listing files url ver
+  listing=$(curl -fsSL --proto '=https' --retry 3 --retry-all-errors "${BETTERBIRD_BASE}/")
+  # Current release of each ESR line first ("-latest-" marker), then every
+  # plain en-US x86_64 build. Exclude the Previous/ archive; highest
+  # version wins.
+  files=$(grep -oE 'LinuxArchive/betterbird-[^"]*-latest-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -v 'Previous/' | LC_ALL=C sort -V || true)
+  if [[ -z ${files} ]]; then
+    files=$(grep -oE 'LinuxArchive/betterbird-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -vE 'Previous/|-latest-' | LC_ALL=C sort -V || true)
+  fi
+  [[ -n ${files} ]] || die 'BetterBird: no x86_64 tarball found in the download listing'
+  url="${BETTERBIRD_BASE}/$(tail -n1 <<<"${files}")"
+  ver=$(basename "${url}" .en-US.linux-x86_64.tar.xz)
+  curl -fsSL --proto '=https' --retry 3 --retry-all-errors -o /tmp/betterbird.tar.xz "${url}"
+  rm -rf /opt/betterbird
+  tar -xJf /tmp/betterbird.tar.xz -C /opt
+  mv /opt/betterbird "/opt/${ver}"
+  ln -sfn "/opt/${ver}" /opt/betterbird
+  # /usr/local is a symlink to the writable /var/usrlocal in the image.
+  mkdir -p /usr/local/bin
+  ln -sfn "/opt/${ver}/betterbird" /usr/local/bin/betterbird
+  # Icon for the .desktop entry (shipped in system_files); the tarball has
+  # no desktop file of its own.
+  install -D -m 0644 "/opt/${ver}/chrome/icons/default/default256.png" \
+    /usr/share/icons/hicolor/256x256/apps/betterbird.png
+  install -D -m 0644 "/opt/${ver}/chrome/icons/default/default64.png" \
+    /usr/share/icons/hicolor/64x64/apps/betterbird.png
+  rm -f /tmp/betterbird.tar.xz
+  [[ -x "/opt/${ver}/betterbird" ]] || die "BetterBird ${ver}: binary missing after install"
+  echo "BetterBird ${ver} installed (latest x86_64 release)"
+}
+
+# BetterBird: latest x86_64 release pulled at compose time (function
+# above); desktop entry + icon ship in system_files.
 install_betterbird
 # KDE Connect LAN access: mdns discovery + 1714/tcp through firewalld.
 systemctl enable ryven-kdeconnect-firewall.service

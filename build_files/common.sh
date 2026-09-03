@@ -216,7 +216,7 @@ fix_akmods_ostree_post() {
   fi
   # Note: '&' is special in the sed replacement (it means "the match"), so
   # the shell '&&' chain must be written as '\&\&' here.
-  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
+  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& CC=clang /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
     die "failed to patch ${ostree_post}"
   fi
   grep -q '/usr/sbin/runuser' "${ostree_post}" || die "akmods-ostree-post privilege-drop patch did not apply"
@@ -229,9 +229,19 @@ fix_akmods_ostree_post() {
 # whole compose. The COPR is disabled again before returning, even when the
 # install fails. Requires stubbed kernel-install hooks in this unbooted tree.
 install_cachyos_kernel() {
-  local rc=0
+  local rc=0 attempt
+  # COPR's results storage intermittently 504s on metadata fetch (observed
+  # 2026-09-03), so retry the install like the Terra bootstrap does; dnf5
+  # only caches successful metadata, so each attempt re-fetches it.
   dnf5 -y copr enable "${CACHYOS_COPR}"
-  dnf5 -y install kernel-cachyos-lto kernel-cachyos-lto-devel-matched || rc=$?
+  for attempt in 1 2 3 4 5 6; do
+    dnf5 -y install kernel-cachyos-lto kernel-cachyos-lto-devel-matched && rc=0 && break
+    rc=$?
+    if ((attempt < 6)); then
+      echo "kernel-cachyos-lto install attempt ${attempt}/6 failed (rc=${rc}); retrying in 15s" >&2
+      sleep 15
+    fi
+  done
   if ((rc == 0)); then
     dnf5 -y install kernel-cachyos-lto-modules-extra || \
       echo 'kernel-cachyos-lto-modules-extra unavailable; continuing without it' >&2

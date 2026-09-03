@@ -109,7 +109,12 @@ dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}
 mkdir -p /run/akmods
 chown root:akmods /run/akmods
 chmod 0770 /run/akmods
-akmods --force --kernels "${KVER}"
+# CC=clang: the CachyOS LTO kernel tree is clang-built and its saved CFLAGS
+# carry clang-only options (observed: -mretpoline-external-thunk,
+# -fexperimental-late-parse-attributes, -fsplit-lto-unit,
+# -mstack-alignment=8 all rejected by gcc); the module must be built with
+# the same compiler family as the kernel.
+CC=clang akmods --force --kernels "${KVER}"
 if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
   # Dump the akmod build log before failing so CI stdout shows the real
   # compiler error instead of just the missing .ko.
