@@ -16,22 +16,23 @@ dnf5 -y install \
   "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${FEDORA_RELEASE}.noarch.rpm" \
   "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${FEDORA_RELEASE}.noarch.rpm"
 
-# Terra bootstrap retried: Terra publishes metadata non-atomically, so a
-# fresh repomd can reference files that 404 until the publish settles.
+# Terra bootstrap retried: Terra publishes metadata non-atomically and
+# mirrors can serve stale repomd files, so a fresh repomd can reference
+# files that 404, or fail its checksum, until the publish settles.
 for terra_attempt in 1 2 3 4 5; do
   if dnf5 -y install --nogpgcheck \
     --repofrompath "terra,https://repos.fyralabs.com/terra${FEDORA_RELEASE}" \
-    terra-release; then
+    terra-release && \
+    dnf5 -y install --enablerepo=terra \
+      terra-release-extras \
+      terra-release-mesa \
+      terra-release-multimedia; then
     break
   fi
-  [[ ${terra_attempt} -lt 5 ]] || die 'terra-release bootstrap failed after 5 attempts'
+  [[ ${terra_attempt} -lt 5 ]] || die 'Terra bootstrap failed after 5 attempts'
   dnf5 clean expire-cache --repoid=terra 2>/dev/null || dnf5 clean all
   sleep 30
 done
-dnf5 -y install --enablerepo=terra \
-  terra-release-extras \
-  terra-release-mesa \
-  terra-release-multimedia
 disable_yum_repos /etc/yum.repos.d/rpmfusion*.repo /etc/yum.repos.d/*terra*.repo
 
 stub_kernel_install_hooks
