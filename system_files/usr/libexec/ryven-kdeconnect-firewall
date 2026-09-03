@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Allow KDE Connect through firewalld so it works OOTB on LANs:
+#   - mdns: device discovery (KDE Connect advertises _kdeconnect._tcp)
+#   - 1714/tcp: direct device-to-device connections
+# Permanent rules only; they are loaded when firewalld starts (this unit is
+# ordered before it). Idempotent: re-adding the same service/port is a no-op
+# error that is ignored.
+set -euo pipefail
+
+command -v firewall-cmd >/dev/null 2>&1 || exit 0
+firewall-cmd --permanent --add-service=mdns >/dev/null 2>&1 || true
+firewall-cmd --permanent --add-port=1714/tcp >/dev/null 2>&1 || true

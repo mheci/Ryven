@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Screenshot OCR -> text to stdout and (when non-empty) to the clipboard.
+#
+# Usage: screenshot-ocr [--region|-r] [tesseract-lang]
+#   --region      interactive region selection (slurp)
+#   tesseract-lang  defaults to "eng"; add more, e.g. "eng+ara"
+#
+# The wl/sericea images are the intended targets (grim + slurp + tesseract).
+# On ryven (KDE) use Spectacle's built-in OCR instead.
+set -euo pipefail
+
+LANGS='eng'
+if [[ ${1:-} == '--region' || ${1:-} == '-r' ]]; then
+  shift
+  REGION=1
+else
+  REGION=0
+fi
+if [[ $# -gt 0 ]]; then
+  LANGS=$1
+fi
+
+command -v grim >/dev/null 2>&1 || {
+  echo 'screenshot-ocr: grim not found (wl/sericea images only;' >&2
+  echo 'on ryven use Spectacle, which has built-in OCR)' >&2
+  exit 1
+}
+
+tmp=$(mktemp /tmp/screenshot-ocr.XXXXXX.png)
+trap 'rm -f "${tmp}"' EXIT
+if [[ ${REGION} -eq 1 ]]; then
+  grim -g "${tmp}"
+else
+  grim "${tmp}"
+fi
+
+text=$(tesseract "${tmp}" - -l "${LANGS}" --psm 6 2>/dev/null | sed -e 's/[[:space:]]*$//')
+printf '%s\n' "${text}"
+if [[ -n ${text} ]] && command -v wl-copy >/dev/null 2>&1; then
+  printf '%s\n' "${text}" | wl-copy 2>/dev/null || true
+fi

@@ -132,8 +132,11 @@ dnf5 -y install \
   NetworkManager-wifi NetworkManager-bluetooth NetworkManager-tui \
   nm-connection-editor network-manager-applet \
   blueman brightnessctl playerctl pavucontrol \
-  thunar thunar-volman gvfs gvfs-mtp gvfs-gphoto2 \
+  thunar thunar-volman gvfs gvfs-mtp gvfs-smb gvfs-gphoto2 \
   libsecret polkit \
+  hunspell hunspell-en hunspell-en-US hunspell-en-GB hunspell-ar \
+  aspell aspell-en gspell c-ares \
+  tesseract tesseract-langpack-eng tesseract-langpack-ara \
   google-noto-sans-fonts rsms-inter-fonts jetbrains-mono-fonts \
   fontawesome-fonts
 
@@ -213,6 +216,8 @@ systemctl enable greetd.service
 # First-boot PAM wiring: pam_oo7.so auto-unlock at greetd + keyring password
 # sync in /etc/pam.d/passwd (guarded, idempotent, stamped).
 systemctl enable ryven-keyring-pam.service
+# KDE Connect LAN access: mdns discovery + 1714/tcp through firewalld.
+systemctl enable ryven-kdeconnect-firewall.service
 if [[ -f /usr/lib/systemd/system/sddm.service ]]; then
   systemctl disable sddm.service || true
   systemctl mask sddm.service || true
@@ -321,6 +326,16 @@ check 'oo7 user unit' test -f /usr/lib/systemd/user/oo7-daemon.service
 check 'oo7 user generator' test -x /usr/lib/systemd/user-generators/ryven-user-units
 check 'keyring pam oneshot' unit_enabled ryven-keyring-pam.service
 check 'no gnome-keyring' bash -c '! rpm -q gnome-keyring >/dev/null 2>&1'
+check 'spell: hunspell+en variants' bash -c 'rpm -q hunspell hunspell-en hunspell-en-US hunspell-en-GB >/dev/null 2>&1'
+check 'spell: hunspell-ar' rpm -q hunspell-ar
+check 'spell: aspell-en' rpm -q aspell-en
+check 'spell: gspell' rpm -q gspell
+check 'c-ares' rpm -q c-ares
+check 'ocr: tesseract+eng+ara' bash -c 'rpm -q tesseract tesseract-langpack-eng tesseract-langpack-ara >/dev/null 2>&1'
+check 'screenshot-ocr helper' test -x /usr/local/bin/screenshot-ocr
+check 'kde-connect' rpm -q kde-connect
+check 'kdeconnect firewall' unit_enabled ryven-kdeconnect-firewall.service
+check 'gvfs-mtp' rpm -q gvfs-mtp
 check 'nvidia kargs' test -f /usr/lib/bootc/kargs.d/00-nvidia.toml
 check 'zswap kargs' test -f /usr/lib/bootc/kargs.d/10-zswap.toml
 check 'ffmpeg rpm' rpm -q ffmpeg

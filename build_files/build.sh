@@ -403,7 +403,16 @@ dnf5 -y install \
   sudo-rs flatpak \
   plasma-login-manager kcm-plasmalogin \
   greenboot greenboot-default-health-checks \
-  firefox
+  firefox \
+  # Text/OCR stack: spell checkers with English variants + Arabic
+  # (hunspell covers ar; F44 has no aspell-ar package), c-ares for the
+  # agentic toolchain, tesseract for Spectacle OCR.
+  hunspell hunspell-en hunspell-en-US hunspell-en-GB hunspell-ar \
+  aspell aspell-en gspell c-ares \
+  tesseract tesseract-langpack-eng tesseract-langpack-ara \
+  # KDE minimum floor: device pairing on LAN, KIO virtual filesystems,
+  # the Plasma 6 polkit agent (package is 'polkit-kde' on F44).
+  kde-connect kio-fuse kio-extras kio-gdrive polkit-kde
 
 # Product rule: no Docker engine on the image.
 if have_rpm docker-ce || have_rpm docker; then
@@ -542,6 +551,8 @@ fi
 install_priority kf6-kwallet
 install_priority pam-kwallet
 systemctl enable ryven-keyring-pam.service
+# KDE Connect LAN access: mdns discovery + 1714/tcp through firewalld.
+systemctl enable ryven-kdeconnect-firewall.service
 
 # Enable every greenboot/redboot unit shipped by the RPMs, including
 # redboot-auto-reboot (native greenboot; do not drop it). Fail if none found.
@@ -821,6 +832,22 @@ check 'kde wallet (ksecretd)' command -v ksecretd
 check 'pam-kwallet rpm' rpm -q pam-kwallet
 check 'pam-kwallet module' test -f /usr/lib64/security/pam_kwallet5.so
 check 'keyring pam oneshot' unit_enabled ryven-keyring-pam.service
+# Minimum-functionality floor (all images): clipboard, OCR, notifications,
+# KDE Connect OOTB, polkit, KIO, spell/OCR languages, yazi, encrypted DNS.
+# KRunner (clipboard history) ships inside plasma-workspace on F44.
+check 'clipboard manager (krunner)' test -x /usr/bin/krunner
+check 'ocr: tesseract+eng+ara' bash -c 'rpm -q tesseract tesseract-langpack-eng tesseract-langpack-ara >/dev/null 2>&1'
+check 'notifications (kf6-knotifications)' rpm -q kf6-knotifications
+check 'kde-connect' rpm -q kde-connect
+check 'kdeconnect firewall' unit_enabled ryven-kdeconnect-firewall.service
+check 'polkit-kde agent' rpm -q polkit-kde
+check 'kio-fuse' rpm -q kio-fuse
+check 'kio-extras' rpm -q kio-extras
+check 'spell: hunspell+en variants' bash -c 'rpm -q hunspell hunspell-en hunspell-en-US hunspell-en-GB >/dev/null 2>&1'
+check 'spell: hunspell-ar' rpm -q hunspell-ar
+check 'spell: aspell-en' rpm -q aspell-en
+check 'spell: gspell' rpm -q gspell
+check 'c-ares' rpm -q c-ares
 check 'darkly widgetStyle' grep -q 'widgetStyle=Darkly' /etc/xdg/kdeglobals
 check 'plasmalogin enabled' unit_enabled plasmalogin.service
 check 'sddm not enabled' bash -c 's=$(systemctl is-enabled sddm.service 2>/dev/null || true); [[ $s != enabled ]]'

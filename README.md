@@ -46,6 +46,23 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
 
 `ujust`: `secure-boot-enroll`, `tpm-luks-unlock`, `scx-select`. Reboot only with `reboot=1`.
 
+## Minimum functionality (all images)
+
+- **Clipboard**: manager + history persistence — wl/sericea: wl-clipboard + cliphist +
+  wl-clip-persist (survives reboots); ryven: KRunner paste clipboard history.
+- **OCR screenshotting**: wl/sericea: `screenshot-ocr` / `screenshot-ocr --region`
+  (grim + slurp + tesseract, eng/ara, text to stdout and clipboard); ryven: Spectacle's
+  built-in OCR (tesseract installed for it).
+- **Notifications**: dunst (wl/sericea), Plasma KNotify (ryven).
+- **KDE Connect**: preinstalled and firewall-open OOTB (mdns discovery + `1714/tcp`
+  through firewalld, applied before firewalld starts; pair via `kdeconnect-cli`).
+- **polkit**: daemon on all images; agent OOTB — `hyprpolkitagent` (wl), `polkit-kde`
+  (ryven), portal-based agent on sericea via xdg-desktop-portal.
+- **KIO / GVFS**: ryven: kio-fuse + kio-extras + kio-gdrive; wl/sericea: gvfs +
+  gvfs-mtp + gvfs-smb + gvfs-gphoto2 (phone/camera + SMB file access).
+- **Spell check**: hunspell + aspell + gspell with `en`, `en-US`, `en-GB` (F44's full
+  English set) and Arabic (`hunspell-ar`; F44 has no `aspell-ar`).
+
 ## Themes
 
 - **Ryven** (default): deep navy/slate — coolors `0d1b2a-1b263b-415a77-778da9-e0e1dd`.
