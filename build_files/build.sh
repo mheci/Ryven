@@ -19,8 +19,10 @@
 #
 # terra-release-nvidia is never installed. NVIDIA kernel modules are built
 # for the CachyOS kernel from RPMFusion akmod-nvidia at compose time.
-# CUDA packages are excluded. Third-party .repo files stay on the image but
-# must be enabled=0 at rest; compose re-enables them with --enablerepo.
+# CUDA toolkit packages are excluded; the driver's CUDA runtime libs
+# (xorg-x11-drv-nvidia-cuda*) are part of the driver stack and do ship.
+# Third-party .repo files stay on the image but must be enabled=0 at rest;
+# compose re-enables them with --enablerepo.
 # Never `dnf swap mesa-*-freeworld --allowerasing`. Never kernel versionlock.
 
 set -euxo pipefail
@@ -330,8 +332,13 @@ dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}
   xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-cuda-libs \
   xorg-x11-drv-nvidia-cuda-libs.i686
 akmods --force --kernels "${KVER}"
-find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q . ||
+if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
+  # Dump the akmod build log before failing so CI stdout shows the real
+  # compiler error instead of just the missing .ko.
+  echo '--- akmods log (last 40 lines) ---' >&2
+  tail -n 40 /var/log/akmod/*.log 2>/dev/null || true
   die "akmods produced no nvidia.ko for ${KVER}"
+fi
 dnf5 -y remove gcc make clang llvm
 
 # SELinux booleans for custom kernels and gaming runtimes (Steam/Proton JIT,

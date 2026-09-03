@@ -6,7 +6,8 @@
 # miss; repo files are disabled at rest. Weekly image rebuilds pick up latest.
 #
 # Same product rules as Ryven: no terra-release-nvidia, no mesa-freeworld swap,
-# no CUDA, no Docker, no LIBVA_DRIVER_NAME=nvidia, zswap on / zram off,
+# no CUDA toolkit (the driver's CUDA runtime libs ship with the driver), no
+# Docker, no LIBVA_DRIVER_NAME=nvidia, zswap on / zram off,
 # CachyOS kernel (COPR) + RPMFusion akmod-nvidia built at compose time.
 
 set -euxo pipefail
@@ -71,8 +72,13 @@ dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}
   xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-cuda-libs \
   xorg-x11-drv-nvidia-cuda-libs.i686
 akmods --force --kernels "${KVER}"
-find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q . ||
+if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
+  # Dump the akmod build log before failing so CI stdout shows the real
+  # compiler error instead of just the missing .ko.
+  echo '--- akmods log (last 40 lines) ---' >&2
+  tail -n 40 /var/log/akmod/*.log 2>/dev/null || true
   die "akmods produced no nvidia.ko for ${KVER}"
+fi
 dnf5 -y remove gcc make clang llvm
 
 # SELinux booleans for custom kernels and gaming runtimes (Steam/Proton JIT,

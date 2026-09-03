@@ -130,7 +130,8 @@ shell on restart.
 
 ## Not in the image
 
-CUDA, Docker/VMs, `terra-release-nvidia`, mesa-freeworld swap, cardwire, v4l2loopback, `curl | sh`.
+CUDA toolkit (the driver's CUDA runtime libs ship with the driver), Docker/VMs,
+`terra-release-nvidia`, mesa-freeworld swap, cardwire, v4l2loopback, `curl | sh`.
 
 ```bash
 just build
