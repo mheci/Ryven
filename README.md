@@ -80,6 +80,13 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
   - CachyOS-style PCI latency timers at boot (`ryven-pci-latency.service`,
     20 cycles all devices / 0 root bridge / 80 audio)
   - `/etc/drirc` `vblank_mode=0` (DRI input latency; inert for the NVIDIA driver)
+  - **falcond** (enabled): per-game performance daemon — detects the running
+    game, applies its profile (scheduler/power/vcache/scripts), reverts on
+    exit. OOTB config in `/etc/falcond/config.conf` (scx_loader still owns the
+    boot-time scheduler; per-game profiles may switch per title), profiles from
+    `falcond-profiles`, template at `/usr/share/falcond/profiles/user/` —
+    `ujust falcond-profile name=<game-exe>` scaffolds one. **GameMode is
+    deliberately NOT installed** (the packages `Conflicts`; falcond replaces it).
   - `ujust game cmd='steam' [nice=-4]`: runs a game with `LD_BIND_NOW=1` + nice −4
     (per-invocation on purpose — the wiki warns against a global `LD_BIND_NOW`)
   - already in the image: scx_lavd `--performance` (the wiki-recommended scheduler),
@@ -99,6 +106,15 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
   offending process before an OOM freeze; keeps the desktop responsive during
   game streaming / heavy agentic workloads (`psi-top`, `psi2log` shipped for
   diagnosis).
+- **vicinae** (Terra, starts at login): high-performance native game launcher.
+- **lact** (Terra, `lactd` enabled): GPU monitoring/configuration tool.
+- **openrazer** (Terra userspace + `openrazerd`): Razer device daemon over the
+  mainline `razer_*` drivers (the openrazer kmod is not buildable for the
+  CachyOS kernel, so it is intentionally not part of the akmods build).
+- **SELinux gaming**: `selinuxuser_execmod`, `selinuxuser_execstack`,
+  `selinuxuser_execheap` (+ `domain_kernel_load_modules` for the akmod nvidia
+  module) applied at compose via `semanage boolean -m --on`, `setsebool -P`
+  fallback.
 
 ## Themes
 
@@ -131,7 +147,8 @@ shell on restart.
 ## Not in the image
 
 CUDA toolkit (the driver's CUDA runtime libs ship with the driver), Docker/VMs,
-`terra-release-nvidia`, mesa-freeworld swap, cardwire, v4l2loopback, `curl | sh`.
+`terra-release-nvidia`, mesa-freeworld swap, cardwire, v4l2loopback, `curl | sh`,
+GameMode (conflicts with falcond, which provides the same role).
 
 ```bash
 just build

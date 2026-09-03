@@ -341,13 +341,9 @@ if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .
 fi
 dnf5 -y remove gcc make clang llvm
 
-# SELinux booleans for custom kernels and gaming runtimes (Steam/Proton JIT,
-# out-of-tree module loads). Each applied independently so one missing
-# boolean cannot skip the rest; all non-fatal with a warning.
-for sebool in domain_kernel_load_modules selinuxuser_execmod selinuxuser_execstack selinuxuser_execheap; do
-  setsebool -P "${sebool}" on 2>/dev/null ||
-    echo "SELinux boolean ${sebool} unavailable" >&2
-done
+# SELinux for gaming: Proton/Wine JIT + out-of-tree module loads.
+# semanage boolean -m --on (policy default) with setsebool -P fallback.
+apply_selinux_game_booleans
 
 # Nouveau Vulkan ICD would race NVIDIA. Unversioned libnvidia-ml.so is what
 # several tools dlopen; the SONAME is libnvidia-ml.so.1.
@@ -417,7 +413,7 @@ dnf5 -y install \
   hunspell hunspell-en hunspell-en-US hunspell-en-GB hunspell-ar \
   aspell aspell-en gspell c-ares \
   tesseract tesseract-langpack-eng tesseract-langpack-ara \
-  pciutils \
+  pciutils policycoreutils-python-utils power-profiles-daemon \
   # KDE minimum floor: device pairing on LAN, KIO virtual filesystems,
   # the Plasma 6 polkit agent (package is 'polkit-kde' on F44).
   kde-connect kio-fuse kio-extras kio-gdrive polkit-kde
@@ -567,6 +563,35 @@ install_priority yazi
 # workloads on a desktop that must stay responsive.
 install_priority nohang
 systemctl enable nohang.service
+# Terra gaming/peripherals stack. falcond REPLACES gamemode (the packages
+# Conflicts; falcond does per-game profiled tuning instead). openrazer is
+# userspace only: its kmod targets the Terra kernel and would join our
+# akmods build, so mainline razer_* drivers (in the CachyOS kernel) are the
+# device support; the daemon + python bindings work over them.
+install_priority falcond falcond-profiles
+install_priority vicinae lact
+install_priority openrazer openrazer-daemon python3-openrazer
+systemctl enable falcond.service lactd.service
+if [[ -f /usr/lib/systemd/system/openrazer.service ]]; then
+  systemctl enable openrazer.service
+fi
+# falcond OOTB config (README: config.conf is generated on first run, but
+# may be packaged — we package it). scx_sched=none: scx_loader owns the
+# boot-time scheduler (scx_lavd --performance); per-game profiles still
+# switch schedulers per title and restore the pre-profile snapshot.
+# vcache_mode=none: AMD 3D vcache feature, these images are NVIDIA.
+mkdir -p /etc/falcond
+cat >/etc/falcond/config.conf <<'EOF'
+enable_performance_mode = true
+scx_sched = none
+scx_sched_props = default
+vcache_mode = none
+profile_mode = none
+poll_interval_ms = 9000
+EOF
+# Template user profile (copy via `ujust falcond-profile name=<game-exe>`).
+install -D -m 0644 /usr/share/ryven/falcond/ryven-gaming-template.conf \
+  /usr/share/falcond/profiles/user/ryven-gaming-template.conf
 # KDE Connect LAN access: mdns discovery + 1714/tcp through firewalld.
 systemctl enable ryven-kdeconnect-firewall.service
 # PCI latency timers (CachyOS-style) at boot, before any GUI starts.
@@ -884,6 +909,20 @@ check 'setpci' command -v setpci
 check 'nohang rpm' rpm -q nohang
 check 'nohang enabled' unit_enabled nohang.service
 check 'nohang conf' test -f /etc/nohang/nohang.conf
+# Terra gaming/peripherals stack
+check 'falcond rpm' rpm -q falcond
+check 'falcond profiles' rpm -q falcond-profiles
+check 'falcond config' test -f /etc/falcond/config.conf
+check 'falcond template profile' test -f /usr/share/falcond/profiles/user/ryven-gaming-template.conf
+check 'falcond enabled' unit_enabled falcond.service
+check 'gamemode absent (falcond conflict)' bash -c '! rpm -q gamemode >/dev/null 2>&1'
+check 'vicinae rpm' rpm -q vicinae
+check 'vicinae user unit' test -f /usr/lib/systemd/user/vicinae.service
+check 'lact rpm' rpm -q lact
+check 'lactd enabled' unit_enabled lactd.service
+check 'openrazer userspace' command -v openrazerd
+check 'semanage' command -v semanage
+check 'power-profiles-daemon' rpm -q power-profiles-daemon
 check 'darkly widgetStyle' grep -q 'widgetStyle=Darkly' /etc/xdg/kdeglobals
 check 'plasmalogin enabled' unit_enabled plasmalogin.service
 check 'sddm not enabled' bash -c 's=$(systemctl is-enabled sddm.service 2>/dev/null || true); [[ $s != enabled ]]'

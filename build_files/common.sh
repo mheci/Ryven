@@ -223,6 +223,23 @@ unit_enabled() {
   [[ "$(systemctl is-enabled "$1" 2>/dev/null || true)" == "enabled" ]]
 }
 
+# SELinux gaming setup: the booleans Proton/Wine gaming needs (JIT module
+# loading, JIT execmem, cheap execmem) plus domain_kernel_load_modules for
+# the akmod-built nvidia module. `semanage boolean -m --on` changes the
+# policy default (preferred); `setsebool -P ... 1` persists the current
+# value (fallback). Each boolean is applied independently and is
+# non-fatal with a warning so one unavailable boolean cannot block the rest.
+apply_selinux_game_booleans() {
+  local b
+  for b in selinuxuser_execmod selinuxuser_execstack selinuxuser_execheap domain_kernel_load_modules; do
+    if command -v semanage >/dev/null 2>&1 && semanage boolean -m --on "${b}" >/dev/null 2>&1; then
+      continue
+    fi
+    setsebool -P "${b}" 1 2>/dev/null || echo "SELinux boolean ${b} unavailable" >&2
+  done
+  return 0
+}
+
 # wl-clip-persist is not in Fedora/Terra/Fusion (2026-09). RPM first, then
 # a pinned-commit cargo build into /usr/bin. Build-only toolchain packages
 # are removed again so they do not ship in the final image. Not curl|sh.

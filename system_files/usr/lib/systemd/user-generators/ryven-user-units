@@ -11,6 +11,8 @@
 #                                  only linked when the daemon binary exists)
 #  - plasma-kwallet-pam.service   (ryven image; shipped by the pam-kwallet
 #                                  package, enables KDE Wallet PAM helper)
+#  - vicinae.service              (all images; the native launcher starts at
+#                                  login; shipped by the vicinae package)
 
 wants="${SYSTEMD_USER_UNIT_PATH:-${XDG_RUNTIME_DIR:-/tmp}/systemd/user}/default.target.wants"
 mkdir -p "$wants"
@@ -26,4 +28,5 @@ if [ -x /usr/bin/oo7-daemon ]; then
   link_unit oo7-daemon.service
 fi
 link_unit plasma-kwallet-pam.service
+link_unit vicinae.service
 exit 0

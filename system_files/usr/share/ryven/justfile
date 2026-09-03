@@ -55,6 +55,23 @@ tpm-luks-unlock:
     echo "Not rebooting."
 
 [group('performance')]
+# Create a falcond user profile from the Ryven template (all options are
+# documented in the template header). User profiles override system ones.
+falcond-profile name="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    [[ -n "{{ name }}" ]] || { echo "Usage: ujust falcond-profile name=<game-exe>"; exit 1; }
+    [[ ${name} != */* && ${name} != *\"* ]] || { echo "name may not contain / or \"" >&2; exit 1; }
+    if [[ ${EUID} -ne 0 ]]; then
+      exec sudo /usr/bin/ujust falcond-profile name="{{ name }}"
+    fi
+    mkdir -p /usr/share/falcond/profiles/user
+    dest="/usr/share/falcond/profiles/user/${name}.conf"
+    install -m 0644 /usr/share/ryven/falcond/ryven-gaming-template.conf "${dest}"
+    sed -i "s/^name = .*/name = \"${name}\"/" "${dest}"
+    echo "Wrote ${dest}. Edit it, then: systemctl restart falcond"
+
+[group('performance')]
 # Launch a game with the wiki's latency recommendations (Gaming -> Load
 # shared objects immediately + Nice levels). LD_BIND_NOW is per invocation
 # on purpose: the wiki warns against setting it globally.
