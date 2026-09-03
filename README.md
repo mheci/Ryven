@@ -60,6 +60,9 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
   (ryven), portal-based agent on sericea via xdg-desktop-portal.
 - **KIO / GVFS**: ryven: kio-fuse + kio-extras + kio-gdrive; wl/sericea: gvfs +
   gvfs-mtp + gvfs-smb + gvfs-gphoto2 (phone/camera + SMB file access).
+- **yazi**: from Terra (not in Fedora 44 repos).
+- **`vm.max_map_count=2147483642`** (MAX_INT − 5, the SteamOS default per the
+  Arch gaming wiki): `/etc/sysctl.d/90-ryven-max-map-count.conf`, survives bootc updates.
 - **Spell check**: hunspell + aspell + gspell with `en`, `en-US`, `en-GB` (F44's full
   English set) and Arabic (`hunspell-ar`; F44 has no `aspell-ar`).
 - **DNS**: opportunistic DNS encryption OOTB with Cloudflare — systemd-resolved is the
@@ -68,6 +71,10 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
   names first, everything else resolves via Cloudflare over TLS, and if the encrypted
   path is blocked resolved falls back to plain for the same servers.
 - **c-ares** runtime for the agentic toolchain.
+- **nohang** (Terra, enabled at boot): PSI-based low-memory handler — kills the
+  offending process before an OOM freeze; keeps the desktop responsive during
+  game streaming / heavy agentic workloads (`psi-top`, `psi2log` shipped for
+  diagnosis).
 
 ## Themes
 

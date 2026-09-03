@@ -551,6 +551,14 @@ fi
 install_priority kf6-kwallet
 install_priority pam-kwallet
 systemctl enable ryven-keyring-pam.service
+# yazi is not in the Fedora 44 repos; it comes from Terra (repo disabled at
+# rest by the Terra bootstrap; weekly rebuild tracks the Terra package).
+install_priority yazi
+# nohang (Terra; not in Fedora 44): PSI-based low-memory handler that kills
+# the offending process before an OOM freeze — for game streaming + agentic
+# workloads on a desktop that must stay responsive.
+install_priority nohang
+systemctl enable nohang.service
 # KDE Connect LAN access: mdns discovery + 1714/tcp through firewalld.
 systemctl enable ryven-kdeconnect-firewall.service
 
@@ -848,8 +856,13 @@ check 'spell: hunspell-ar' rpm -q hunspell-ar
 check 'spell: aspell-en' rpm -q aspell-en
 check 'spell: gspell' rpm -q gspell
 check 'c-ares' rpm -q c-ares
+check 'yazi' command -v yazi
 check 'dns: cloudflare dot drop-in' grep -q 'DNSOverTLS=yes' /etc/systemd/resolved.conf.d/ryven-dns.conf
 check 'dns: nm resolved backend' grep -q 'dns=systemd-resolved' /etc/NetworkManager/conf.d/ryven-dns.conf
+check 'vm.max_map_count sysctl' grep -q 'vm.max_map_count = 2147483642' /etc/sysctl.d/90-ryven-max-map-count.conf
+check 'nohang rpm' rpm -q nohang
+check 'nohang enabled' unit_enabled nohang.service
+check 'nohang conf' test -f /etc/nohang/nohang.conf
 check 'darkly widgetStyle' grep -q 'widgetStyle=Darkly' /etc/xdg/kdeglobals
 check 'plasmalogin enabled' unit_enabled plasmalogin.service
 check 'sddm not enabled' bash -c 's=$(systemctl is-enabled sddm.service 2>/dev/null || true); [[ $s != enabled ]]'

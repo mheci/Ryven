@@ -239,6 +239,14 @@ install_priority \
   kde-connect \
   wf-recorder \
   android-tools libimobiledevice
+# yazi is not in the Fedora 44 repos; it comes from Terra (weekly rebuild
+# tracks the Terra package; repo is disabled at rest by the Terra bootstrap).
+install_priority yazi
+# nohang (Terra; not in Fedora 44): PSI-based low-memory handler that kills
+# the offending process before an OOM freeze — for game streaming + agentic
+# workloads on a desktop that must stay responsive.
+install_priority nohang
+systemctl enable nohang.service
 install_wl_clip_persist
 # oo7 replaces gnome-keyring as the Secret Service keyring (see common.sh).
 install_oo7
@@ -398,11 +406,16 @@ check 'spell: gspell' rpm -q gspell
 check 'c-ares' rpm -q c-ares
 check 'ocr: tesseract+eng+ara' bash -c 'rpm -q tesseract tesseract-langpack-eng tesseract-langpack-ara >/dev/null 2>&1'
 check 'screenshot-ocr helper' test -x /usr/local/bin/screenshot-ocr
+check 'yazi' command -v yazi
 check 'kde-connect' rpm -q kde-connect
 check 'kdeconnect firewall' unit_enabled ryven-kdeconnect-firewall.service
 check 'gvfs-mtp' rpm -q gvfs-mtp
 check 'dns: cloudflare dot drop-in' grep -q 'DNSOverTLS=yes' /etc/systemd/resolved.conf.d/ryven-dns.conf
 check 'dns: nm resolved backend' grep -q 'dns=systemd-resolved' /etc/NetworkManager/conf.d/ryven-dns.conf
+check 'vm.max_map_count sysctl' grep -q 'vm.max_map_count = 2147483642' /etc/sysctl.d/90-ryven-max-map-count.conf
+check 'nohang rpm' rpm -q nohang
+check 'nohang enabled' unit_enabled nohang.service
+check 'nohang conf' test -f /etc/nohang/nohang.conf
 check 'nvidia kargs' test -f /usr/lib/bootc/kargs.d/00-nvidia.toml
 check 'zswap kargs' test -f /usr/lib/bootc/kargs.d/10-zswap.toml
 check 'ffmpeg rpm' rpm -q ffmpeg
