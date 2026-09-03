@@ -359,8 +359,13 @@ if have_rpm akmod-openrazer; then
     die "akmods produced no openrazer kmod (extra/openrazer) for ${KVER}"
   }
 fi
-# Last kmod build done - drop the build toolchain from the image.
-dnf5 -y remove gcc make clang llvm lld
+# The build toolchain (gcc/make/clang/llvm/lld + kernel-devel) STAYS in
+# the image: neg17's akmod-nvidia RPM hard-requires gcc/make (the whole
+# nvidia stack chains off it), and the patched akmods scriptlet forces
+# CC=clang/LD=ld.lld for every kmod build because the LTO kernel's
+# linker flags break ld.bfd. Removing any of it cascades the entire
+# nvidia/openrazer kmod stack out of the image and breaks kmod builds
+# at runtime image updates (round-23 failure).
 # falcond OOTB config (README: config.conf is generated on first run, but
 # may be packaged — we package it). scx_sched=none: scx_loader owns the
 # boot-time scheduler (scx_lavd --performance); per-game profiles still

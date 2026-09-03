@@ -366,8 +366,9 @@ install_wl_clip_persist() {
   # Keep pkgconf-pkg-config: it is a system dependency (kmod requires
   # /usr/bin/pkg-config; kmod is pulled in by the protected systemd-udev),
   # so removing it breaks the transaction even though the build only used
-  # it as a -devel dependency.
-  dnf5 -y remove rust cargo gcc wayland-devel libxkbcommon-devel
+  # it as a -devel dependency. gcc stays too: akmods/akmod-* RPMs
+  # hard-require it and removing it cascades the nvidia kmod stack out.
+  dnf5 -y remove rust cargo wayland-devel libxkbcommon-devel
   command -v wl-clip-persist >/dev/null || die 'wl-clip-persist build produced no binary'
 }
 
@@ -430,7 +431,7 @@ main-binary=/usr/lib/oo7-portal
 UseIn=hyprland,sway
 EOF
   rm -rf /tmp/oo7 /tmp/oo7-cargo
-  # Keep pkgconf-pkg-config (system dependency of kmod; see above).
-  dnf5 -y remove rust cargo gcc
+  # Keep pkgconf-pkg-config and gcc (system dependencies; see above).
+  dnf5 -y remove rust cargo
   command -v oo7-daemon >/dev/null || die 'oo7 build produced no daemon'
 }
