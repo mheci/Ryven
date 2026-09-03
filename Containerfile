@@ -5,7 +5,7 @@ COPY system_files /system_files
 
 # Base Image
 # Track ghcr.io/ublue-os/kinoite-main:latest; digest pinned for reproducible builds (Renovate bumps).
-FROM ghcr.io/ublue-os/kinoite-main:latest@sha256:5d1d4fa0ec808a34a879ce03854a93d9d708bdc11a486992ae3435525d363f3b
+FROM ghcr.io/ublue-os/kinoite-main:latest@sha256:fbaeccd397709f311bbade92080b7139c69edcbdb1ae5efa5d89290659fe211c
 
 # /opt must be a real directory so RPM payloads (Zen, Brave) persist.
 RUN rm -rf /opt && mkdir -p /opt
