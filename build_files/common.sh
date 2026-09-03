@@ -15,9 +15,10 @@ readonly -a FUSION_REPOS=(rpmfusion-free rpmfusion-free-updates rpmfusion-nonfre
 # fedora-multimedia repo (enabled on the base image) ships same-version
 # driver packages under different names (nvidia-driver-common) that
 # file-conflict with the RPMFusion xorg-x11-drv-nvidia set, so the driver
-# stack resolves strictly from RPMFusion (+Fedora). Base defaults elsewhere
-# are left untouched.
-readonly -a NVIDIA_EXCLUDE_REPOS=(--disablerepo=fedora-multimedia '--disablerepo=*negativo*')
+# stack resolves strictly from RPMFusion (+Fedora). Exact repo IDs only:
+# dnf5 hard-errors on a --disablerepo pattern that matches nothing.
+# Base defaults elsewhere are left untouched.
+readonly -a NVIDIA_EXCLUDE_REPOS=(--disablerepo=fedora-multimedia)
 # CachyOS kernel for Fedora: LLVM-ThinLTO flavor (COPR
 # bieszczaders/kernel-cachyos-lto, BORE scheduler). Weekly rebuilds track the
 # COPR tip; COPR offers no digest pins, so the tag is intentionally floating
