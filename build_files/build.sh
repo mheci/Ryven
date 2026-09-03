@@ -289,14 +289,12 @@ install_cachyos_kernel() {
 stub_kernel_install_hooks
 trap restore_kernel_install_hooks ERR
 dnf5 -y install jq
-install_cachyos_kernel
-rpm -q kernel-cachyos-lto-core >/dev/null ||
-  die 'kernel-cachyos-lto-core missing after COPR install'
 
-# Erase Fedora kernel Names (nodeps: CachyOS replaces them). Keep
+# Erase Fedora kernel Names (nodeps: CachyOS replaces them next). Keep
 # kernel-tools*: Fedora userspace tools work across kernels and CachyOS
-# ships no tools rebuild here. Wipe /usr/lib/modules so leftover .ko from
-# the old kver cannot confuse depmod.
+# ships no tools rebuild here. Wipe /usr/lib/modules BEFORE installing
+# CachyOS so leftover Fedora .ko cannot confuse depmod; the wildcard must
+# never run after the CachyOS tree lands.
 local_pkg=
 for local_pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra; do
   if have_rpm "${local_pkg}"; then
@@ -304,6 +302,10 @@ for local_pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-mo
   fi
 done
 rm -rf /usr/lib/modules/*
+
+install_cachyos_kernel
+rpm -q kernel-cachyos-lto-core >/dev/null ||
+  die 'kernel-cachyos-lto-core missing after COPR install'
 
 # Single kver string for depmod and nvidia .ko path checks. sort -V + tail if
 # more than one kernel-cachyos-lto-core ever landed (should be one).

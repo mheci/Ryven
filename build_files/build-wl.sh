@@ -42,9 +42,6 @@ disable_yum_repos /etc/yum.repos.d/rpmfusion*.repo /etc/yum.repos.d/*terra*.repo
 stub_kernel_install_hooks
 trap restore_kernel_install_hooks ERR
 dnf5 -y install jq
-install_cachyos_kernel
-rpm -q kernel-cachyos-lto-core >/dev/null ||
-  die 'kernel-cachyos-lto-core missing after COPR install'
 
 local_pkg=
 for local_pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra; do
@@ -52,7 +49,13 @@ for local_pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-mo
     rpm --erase "${local_pkg}" --nodeps
   fi
 done
+# Wipe BEFORE installing CachyOS: the wildcard must never run after the
+# CachyOS module tree lands.
 rm -rf /usr/lib/modules/*
+
+install_cachyos_kernel
+rpm -q kernel-cachyos-lto-core >/dev/null ||
+  die 'kernel-cachyos-lto-core missing after COPR install'
 
 KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | LC_ALL=C sort -V | tail -n1)
 [[ -n "${KVER}" ]] || die 'cannot determine installed CachyOS kernel version'
