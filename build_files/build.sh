@@ -550,7 +550,14 @@ install_priority vulkan-loader.x86_64 vulkan-loader.i686 vulkan-tools
 # Base OS: just (ujust), Secure Boot tooling, LUKS/TPM unlock, chrony (not
 # timesyncd), podman (not docker), firewalld, git+gh, sudo-rs, Flatpak binary
 # for first-boot host installs, Plasma Login Manager (not SDDM), greenboot,
-# Firefox RPM (not the Flathub app).
+# Firefox RPM (not the Flathub app). Text/OCR stack: spell checkers with
+# English variants + Arabic (hunspell covers ar; F44 has no aspell-ar
+# package), c-ares for the agentic toolchain, tesseract for Spectacle OCR.
+# KDE minimum floor: device pairing on LAN, KIO virtual filesystems, the
+# Plasma 6 polkit agent (package is 'polkit-kde' on F44).
+# NOTE: no '#' comment lines inside the install command below - a comment
+# line terminates the backslash continuation, and the remaining lines would
+# execute as their own command (observed: 'hunspell' run as a binary).
 dnf5 -y install \
   just mokutil shim efibootmgr \
   cryptsetup clevis clevis-luks clevis-dracut tpm2-tools \
@@ -560,15 +567,10 @@ dnf5 -y install \
   plasma-login-manager kcm-plasmalogin \
   greenboot greenboot-default-health-checks \
   firefox \
-  # Text/OCR stack: spell checkers with English variants + Arabic
-  # (hunspell covers ar; F44 has no aspell-ar package), c-ares for the
-  # agentic toolchain, tesseract for Spectacle OCR.
   hunspell hunspell-en hunspell-en-US hunspell-en-GB hunspell-ar \
   aspell aspell-en gspell c-ares \
   tesseract tesseract-langpack-eng tesseract-langpack-ara \
   pciutils policycoreutils-python-utils power-profiles-daemon \
-  # KDE minimum floor: device pairing on LAN, KIO virtual filesystems,
-  # the Plasma 6 polkit agent (package is 'polkit-kde' on F44).
   kde-connect kio-fuse kio-extras kio-gdrive polkit-kde
 
 # Product rule: no Docker engine on the image.
