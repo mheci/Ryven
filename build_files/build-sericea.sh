@@ -123,12 +123,14 @@ dnf5 -y install --enablerepo=fedora-nvidia "${NVIDIA_EXCLUDE_REPOS[@]}" \
 mkdir -p /run/akmods
 chown root:akmods /run/akmods
 chmod 0770 /run/akmods
-# Toolchain note (full rationale in fix_akmods_ostree_post): the kernel
-# Makefile picks the module toolchain from LLVM (ifneq ($(LLVM),) ->
-# CC=clang/LD=ld.lld, else CC=gcc/LD=ld); plain CC/LD env vars are
-# overridden by those Makefile assignments, so the patched scriptlet sets
-# LLVM=1, plus KCFLAGS (non-LTO plain-ELF module objects) and MAKEFLAGS
-# (parallel make).
+# Toolchain note (full rationale in fix_akmods_ostree_post): the patched
+# scriptlet builds with CC=clang LD=ld.lld LLVM=1 - the env CC/LD are
+# required because the NVIDIA kernel-open Makefile does `LD ?= ld` and
+# passes CC/LD to the kernel sub-make on the make command line (which
+# beats the kernel Makefile's LLVM-derived assignments); LLVM=1 steers
+# the kernel Makefile itself (clang/ld.lld/llvm-*) for plain-kernel
+# modules; KCFLAGS keeps the module objects plain ELF (non-LTO);
+# MAKEFLAGS parallelizes the make.
 # The nvidia %post (patched scriptlet) normally already built the kmod. If
 # it is missing, build it explicitly via the same patched scriptlet. The
 # `akmods` client is NOT usable for this: it cannot carry the LLVM=1 and

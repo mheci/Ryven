@@ -364,21 +364,27 @@ fix_akmods_ostree_post() {
   if grep -q 'runuser' "${ostree_post}"; then
     return 0
   fi
-  # Env prefix on the akmodsbuild invocation. The kernel Makefile selects
-  # the module toolchain from the LLVM variable: `ifneq ($(LLVM),)` ->
-  # CC=clang, LD=ld.lld, AR=llvm-ar, ... else CC=gcc, LD=ld. Plain CC/LD
-  # env vars do NOT steer it: Makefile variable assignments override
-  # environment variables (observed: an openrazer kmod compiled with gcc
-  # and died on the kernel's clang-only CFLAGS while the KCFLAGS/MAKEFLAGS
-  # env vars were honored). With LLVM=1:
-  #  - the toolchain is clang/ld.lld, matching the clang+LTO x86_64_v3
-  #    kernel whose saved CFLAGS carry clang-only options
-  #    (-mstack-alignment=8, -mretpoline-external-thunk,
-  #    -fexperimental-late-parse-attributes, -fsplit-lto-unit);
-  #  - the LTO config's unconditional `-mllvm -import-instr-limit=5` (and
-  #    lld-only --lto-whole-program-visibility) in KBUILD_LDFLAGS is
-  #    handled natively by ld.lld (ld.bfd parses -mllvm as `-m llvm` =
-  #    --emulation and dies: "unrecognised emulation mode: llvm").
+  # Env prefix on the akmodsbuild invocation. Two layers pick the toolchain:
+  #  1. The NVIDIA kernel-open Makefile (nvidia kmod only) does
+  #     `CC ?= cc` / `LD ?= ld` and then launches the kernel sub-make with
+  #     "CC=$(CC)" "LD=$(LD)" on the make command line (command line beats
+  #     the kernel Makefile's own assignments). With no env CC it falls
+  #     back to the kernel .config's CONFIG_CC_VERSION_TEXT (clang), but
+  #     LD always defaults to `ld` (bfd) -> the module links die on the
+  #     LTO config's `-mllvm` flag ("unrecognised emulation mode: llvm").
+  #     So CC=clang and LD=ld.lld env vars are REQUIRED for nvidia.
+  #     (Plain-kernel modules like openrazer don't go through that Makefile:
+  #     there, Makefile assignments override env CC/LD, which is why
+  #     LLVM=1 is still needed - see 2.)
+  #  2. The kernel Makefile selects its own toolchain from LLVM:
+  #     `ifneq ($(LLVM),)` -> CC=clang, LD=ld.lld, AR=llvm-ar, ...
+  #     else CC=gcc, LD=ld. LLVM=1 makes that block clang+lld (and the
+  #     llvm-* binutils), matching the clang+LTO x86_64_v3 kernel whose
+  #     saved CFLAGS carry clang-only options (-mstack-alignment=8,
+  #     -mretpoline-external-thunk, -fexperimental-late-parse-attributes,
+  #     -fsplit-lto-unit), and lets ld.lld handle the LTO config's
+  #     unconditional `-mllvm -import-instr-limit=5` natively (ld.bfd
+  #     parses -mllvm as `-m llvm` = --emulation and dies).
   #  KCFLAGS="-fno-lto -fno-split-lto-unit": the kernel CFLAGS enable thin
   #    LTO (-flto=thin -fsplit-lto-unit), which would make the module .o
   #    files LLVM bitcode. KCFLAGS is appended by the kernel Makefile
@@ -389,7 +395,7 @@ fix_akmods_ostree_post() {
   #    at scriptlet runtime, i.e. the build container's core count).
   # Note: '&' is special in the sed replacement (it means "the match"), so
   # the shell '&&' chain must be written as '\&\&' here.
-  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& LLVM=1 KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
+  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& CC=clang LD=ld.lld LLVM=1 KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
     die "failed to patch ${ostree_post}"
   fi
   grep -q '/usr/sbin/runuser' "${ostree_post}" || die "akmods-ostree-post privilege-drop patch did not apply"
@@ -480,12 +486,14 @@ dnf5 -y install --enablerepo=fedora-nvidia "${NVIDIA_EXCLUDE_REPOS[@]}" \
 mkdir -p /run/akmods
 chown root:akmods /run/akmods
 chmod 0770 /run/akmods
-# Toolchain note (full rationale in fix_akmods_ostree_post): the kernel
-# Makefile picks the module toolchain from LLVM (ifneq ($(LLVM),) ->
-# CC=clang/LD=ld.lld, else CC=gcc/LD=ld); plain CC/LD env vars are
-# overridden by those Makefile assignments, so the patched scriptlet sets
-# LLVM=1, plus KCFLAGS (non-LTO plain-ELF module objects) and MAKEFLAGS
-# (parallel make).
+# Toolchain note (full rationale in fix_akmods_ostree_post): the patched
+# scriptlet builds with CC=clang LD=ld.lld LLVM=1 - the env CC/LD are
+# required because the NVIDIA kernel-open Makefile does `LD ?= ld` and
+# passes CC/LD to the kernel sub-make on the make command line (which
+# beats the kernel Makefile's LLVM-derived assignments); LLVM=1 steers
+# the kernel Makefile itself (clang/ld.lld/llvm-*) for plain-kernel
+# modules; KCFLAGS keeps the module objects plain ELF (non-LTO);
+# MAKEFLAGS parallelizes the make.
 # The nvidia %post (patched scriptlet) normally already built the kmod. If
 # it is missing, build it explicitly via the same patched scriptlet. The
 # `akmods` client is NOT usable for this: it cannot carry the LLVM=1 and
