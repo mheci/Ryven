@@ -140,12 +140,21 @@ chmod 0770 /run/akmods
 # read. KCFLAGS is appended after the kernel CFLAGS, so the module objects
 # are plain ELF (standard non-LTO-module-against-LTO-kernel combination).
 # MAKEFLAGS: parallel make for the kernel-module build.
-CC=clang LD=ld.lld KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" akmods --force --kernels "${KVER}"
+# The nvidia %post (patched scriptlet) normally already built the kmod. If
+# it is missing, build it explicitly via the same patched scriptlet. The
+# `akmods` client is NOT usable for this: its internal runuser call drops
+# the CC/LD/KCFLAGS environment, so the module link would hit the kernel's
+# clang-LTO -mllvm flag under ld.bfd again.
 if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
-  # Dump the akmod build log before failing so CI stdout shows the real
+  nvsrpm=$(ls /usr/src/akmods/nvidia-kmod-*.src.rpm 2>/dev/null | LC_ALL=C sort -V | tail -n1)
+  [[ -n ${nvsrpm} ]] || die 'nvidia akmod SRPM not found under /usr/src/akmods'
+  /usr/sbin/akmods-ostree-post nvidia "${nvsrpm}"
+fi
+if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
+  # Dump the akmod build logs before failing so CI stdout shows the real
   # compiler error instead of just the missing .ko.
   echo '--- akmods log (last 40 lines) ---' >&2
-  tail -n 40 /var/log/akmod/*.log 2>/dev/null || true
+  tail -n 40 /var/log/akmod/*.log /var/cache/akmods/*/*.failed.log 2>/dev/null || true
   die "akmods produced no nvidia.ko for ${KVER}"
 fi
 # NOTE: the build toolchain (gcc/make/clang/llvm/lld) is kept until the
@@ -359,11 +368,17 @@ fi
 fix_akmods_ostree_post
 if have_rpm akmod-openrazer; then
   if ! find "/usr/lib/modules/${KVER}" -name 'openrazer*.ko*' -print -quit | grep -q .; then
-    CC=clang LD=ld.lld KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" akmods --force --kernels "${KVER}"
+    # Build via the patched scriptlet (same path as the %post): the
+    # `akmods` client's internal runuser call drops the CC/LD/KCFLAGS
+    # environment, breaking the link under ld.bfd + the kernel's -mllvm
+    # LTO flag.
+    orzsrpm=$(ls /usr/src/akmods/openrazer-kmod-*.src.rpm 2>/dev/null | LC_ALL=C sort -V | tail -n1)
+    [[ -n ${orzsrpm} ]] || die 'openrazer akmod SRPM not found under /usr/src/akmods'
+    /usr/sbin/akmods-ostree-post openrazer "${orzsrpm}"
   fi
   find "/usr/lib/modules/${KVER}" -name 'openrazer*.ko*' -print -quit | grep -q . || {
     echo '--- akmods log (last 40 lines) ---' >&2
-    tail -n 40 /var/log/akmod/*.log 2>/dev/null || true
+    tail -n 40 /var/log/akmod/*.log /var/cache/akmods/*/*.failed.log 2>/dev/null || true
     die "akmods produced no openrazer.ko for ${KVER}"
   }
 fi
