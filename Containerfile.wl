@@ -4,6 +4,11 @@ FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
 COPY system_files_wl /system_files_wl
+# The CI host-side Fetch BetterBird step drops the latest tarball into
+# _build/betterbird/ in the build context; the image installs it from
+# /ctx (install_betterbird in the build script). No network in the
+# container.
+COPY _build /_build
 
 # Base image: floating ':44' tag = newest ublue F44 build, no digest or
 # version lock (zero-maintenance policy). Renovate automerges the tag bump

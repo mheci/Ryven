@@ -79,53 +79,6 @@ jobs:
           test -s _build/betterbird/*.tar.xz || { echo 'BetterBird tarball missing' >&2; exit 1; }
           echo 'BetterBird tarball present'
 
-      - name: Diag step-length
-        # TEMP (one round): confirms whether long step scripts are truncated
-        # in flight (each marker should appear in this step's log).
-        run: |
-          # Diag: does a long step script survive intact? Markers every ~200B.
-          echo M1-000
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          # filler line M2-450 padding
-          echo M2-450
-          # filler line M3-650 padding
-          # filler line M3-650 padding
-          # filler line M3-650 padding
-          # filler line M3-650 padding
-          # filler line M3-650 padding
-          # filler line M3-650 padding
-          echo M3-650
-          # filler line M4-900 padding
-          # filler line M4-900 padding
-          # filler line M4-900 padding
-          # filler line M4-900 padding
-          # filler line M4-900 padding
-          # filler line M4-900 padding
-          # filler line M4-900 padding
-          # filler line M4-900 padding
-          # filler line M4-900 padding
-          echo M4-900
-          # filler line M5-1200 padding
-          # filler line M5-1200 padding
-          # filler line M5-1200 padding
-          # filler line M5-1200 padding
-          # filler line M5-1200 padding
-          # filler line M5-1200 padding
-          # filler line M5-1200 padding
-          # filler line M5-1200 padding
-          # filler line M5-1200 padding
-          echo M5-1200
-
       - name: Build Image
         id: build-image
         run: |
