@@ -10,15 +10,32 @@ set -euxo pipefail
 # shellcheck source=/dev/null
 source /ctx/common.sh
 
-# The ublue base image ships /usr/local as a placeholder file, and
-# `cp -avf` cannot lay a directory over a file. Replace the placeholder so
-# system_files usr/local entries land cleanly.
-if [[ -e /usr/local && ! -d /usr/local ]]; then
-  rm -f /usr/local
+# The ublue base image ships /usr/local as a placeholder in a
+# non-directory form (a dangling symlink in base-main: `[[ -e ]]` is false
+# but `cp -avf` still refuses to lay a directory over it). Replace it in
+# any non-directory form before the copy.
+if [[ ! -d /usr/local ]]; then
+  rm -rf /usr/local
 fi
 
 cp -avf /ctx/system_files/. /
 cp -avf /ctx/system_files_sericea/. /
+
+# Restore the Fedora atomic layout: on ostree systems /usr/local is a
+# symlink into the writable /var (/var/usrlocal); the copy above created a
+# real directory under the read-only /usr, which would be unwritable at
+# runtime. Relocate its contents and restore the symlink.
+if [[ -d /usr/local && ! -L /usr/local ]]; then
+  if [[ -e /var/usrlocal || -L /var/usrlocal ]]; then
+    cp -a /usr/local/. /var/usrlocal/
+  else
+    mv /usr/local /var/usrlocal
+  fi
+  rm -rf /usr/local
+fi
+if [[ ! -e /usr/local && ! -L /usr/local ]]; then
+  ln -s /var/usrlocal /usr/local
+fi
 
 dnf5 -y install \
   "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${FEDORA_RELEASE}.noarch.rpm" \

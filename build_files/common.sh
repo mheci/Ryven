@@ -293,6 +293,8 @@ install_betterbird() {
   tar -xJf /tmp/betterbird.tar.xz -C /opt
   mv /opt/betterbird "/opt/${ver}"
   ln -sfn "/opt/${ver}" /opt/betterbird
+  # /usr/local is a symlink to the writable /var/usrlocal in the image.
+  mkdir -p /usr/local/bin
   ln -sfn "/opt/${ver}/betterbird" /usr/local/bin/betterbird
   # Icon for the .desktop entry (shipped in system_files); the tarball has
   # no desktop file of its own.
