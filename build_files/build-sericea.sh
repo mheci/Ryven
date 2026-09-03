@@ -81,24 +81,42 @@ rpm -q kernel-cachyos-lto-core >/dev/null ||
 KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | LC_ALL=C sort -V | tail -n1)
 [[ -n "${KVER}" ]] || die 'cannot determine installed CachyOS kernel version'
 
-# NVIDIA kernel modules built for the CachyOS kernel via RPMFusion akmod
-# (no prebuilt modules exist for it; see build.sh for the full rationale).
-# The LTO kernel tree is clang-built, so clang/llvm join the build deps.
+# NVIDIA driver stack from Negativo17 + kernel module built for the
+# CachyOS kernel via their akmod-nvidia (no prebuilt modules exist for it;
+# see build.sh for the full package-by-package rationale). The LTO kernel
+# tree is clang-built, so clang/llvm join the build deps.
 dnf5 -y install gcc make clang llvm
 # Install the akmods tooling first: the akmod-nvidia %post (which runs
-# inside the fusion transaction below) invokes
+# inside the Negativo17 transaction below) invokes
 # /usr/sbin/akmods-ostree-post, which only exists once the akmods package
 # is in place.
 dnf5 -y install akmods
 # The akmod-nvidia %post builds the kmod inside that transaction; make the
 # build work before the transaction runs (see fix_akmods_ostree_post).
 fix_akmods_ostree_post
-dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" \
+# Add the Negativo17 NVIDIA repo exactly as they instruct (idempotent
+# repofile; retried like the other flaky remote bootstraps).
+for neg17_attempt in 1 2 3 4 5 6; do
+  dnf5 -y config-manager addrepo \
+    --from-repofile="https://negativo17.org/repos/fedora-nvidia.repo" && break
+  [[ ${neg17_attempt} -lt 6 ]] || die 'Negativo17 addrepo failed after 6 attempts'
+  echo "Negativo17 addrepo attempt ${neg17_attempt}/6 failed; retrying in 15s" >&2
+  sleep 15
+done
+# Package map + repo exclusions: see build.sh (same Negativo17 set).
+dnf5 -y install --enablerepo=fedora-nvidia "${NVIDIA_EXCLUDE_REPOS[@]}" \
   akmod-nvidia \
-  xorg-x11-drv-nvidia xorg-x11-drv-nvidia-libs \
-  xorg-x11-drv-nvidia-libs.i686 \
-  xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-cuda-libs \
-  xorg-x11-drv-nvidia-cuda-libs.i686
+  nvidia-driver \
+  xorg-x11-nvidia \
+  nvidia-driver-libs nvidia-driver-libs.i686 \
+  nvidia-driver-common nvidia-driver-common.i686 \
+  nvidia-driver-cuda nvidia-driver-cuda-libs nvidia-driver-cuda-libs.i686 \
+  nvidia-libXNVCtrl \
+  nvidia-settings \
+  nvidia-modprobe \
+  nvidia-persistenced \
+  libnvidia-fbc libnvidia-fbc.i686 \
+  nvidia-driver-selinux
 # akmods init() opens /run/akmods/akmods.lock; the package's tmpfiles.d line
 # (d /run/akmods 0770 root akmods) is normally applied by systemd at boot,
 # so create it for this unbooted compose container.
@@ -110,7 +128,13 @@ chmod 0770 /run/akmods
 # -fexperimental-late-parse-attributes, -fsplit-lto-unit,
 # -mstack-alignment=8 all rejected by gcc); the module must be built with
 # the same compiler family as the kernel.
-CC=clang akmods --force --kernels "${KVER}"
+# KCFLAGS="-fno-lto -fno-split-lto-unit": the kernel CFLAGS enable thin LTO,
+# which makes module .o files LLVM bitcode; NVIDIA's Kbuild partial-links
+# them with `ld -r`, which cannot read bitcode. KCFLAGS is appended after
+# the kernel CFLAGS, so the module objects are plain ELF (standard
+# non-LTO-module-against-LTO-kernel combination).
+# MAKEFLAGS: parallel make for the kernel-module build.
+CC=clang KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" akmods --force --kernels "${KVER}"
 if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
   # Dump the akmod build log before failing so CI stdout shows the real
   # compiler error instead of just the missing .ko.
@@ -152,16 +176,10 @@ kargs = [
 ]
 EOF
 
-dnf5 -y install \
-  "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" \
-  --exclude='cuda*' \
-  --exclude='*nvidia*cuda*' \
-  libva-nvidia-driver.x86_64 \
-  libva-nvidia-driver.i686
+# VA-API for the NVIDIA driver: official Fedora libva-nvidia-driver again
+# as of F44 (only requires libEGL.so.1). Both ISAs (Steam 32-bit).
+dnf5 -y install libva-nvidia-driver.x86_64 libva-nvidia-driver.i686
 install_priority vulkan-loader.x86_64 vulkan-loader.i686 vulkan-tools egl-wayland
-if ! have_rpm nvidia-settings; then
-  dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" --exclude='cuda*' nvidia-settings
-fi
 
 dnf5 -y install \
   just mokutil shim efibootmgr \
@@ -395,6 +413,14 @@ if [[ ! -f ${PROTON_DEST}/proton-cachyos/compatibilitytool.vdf && ! -f ${PROTON_
 fi
 rm -rf /tmp/proton-cachyos
 
+# Zero-maintenance freshness: pull the latest available F44 package set
+# from every enabled source (Fedora + Negativo17 + Terra + COPRs left
+# enabled) so the image is never older than the current release tip.
+# Runs after all installs so it also upgrades anything installed earlier
+# in this layer. The floating :44 base-image tag already tracks the
+# current ublue F44 build; this closes the gap to today's Fedora updates.
+dnf5 -y --refresh upgrade
+
 fail=0
 check() {
   local name=$1
@@ -473,6 +499,18 @@ check 'betterbird on PATH' command -v betterbird
 check 'betterbird desktop entry' test -f /usr/share/applications/betterbird.desktop
 check 'mise' command -v mise
 check 'nvidia kargs' test -f /usr/lib/bootc/kargs.d/00-nvidia.toml
+check 'nvidia-driver (neg17)' rpm -q nvidia-driver
+check 'xorg-x11-nvidia (neg17)' rpm -q xorg-x11-nvidia
+check 'nvidia-driver-libs (neg17)' rpm -q nvidia-driver-libs
+check 'nvidia-driver-common (neg17)' rpm -q nvidia-driver-common
+check 'nvidia-driver-cuda (neg17)' rpm -q nvidia-driver-cuda
+check 'nvidia-driver-selinux (neg17)' rpm -q nvidia-driver-selinux
+check 'libnvidia-fbc (neg17)' rpm -q libnvidia-fbc
+check 'nvidia-settings' rpm -q nvidia-settings
+check 'nvidia-smi' command -v nvidia-smi
+check 'nvidia vulkan icd' test -f /usr/share/vulkan/icd.d/nvidia_icd.x86_64.json
+check 'nvidia va api driver' test -f /usr/lib64/dri/nvidia_drv_video.so
+check 'libva-nvidia-driver' rpm -q libva-nvidia-driver
 check 'zswap kargs' test -f /usr/lib/bootc/kargs.d/10-zswap.toml
 check 'ffmpeg rpm' rpm -q ffmpeg
 check 'no docker' bash -c '! rpm -q docker >/dev/null 2>&1 && ! rpm -q docker-ce >/dev/null 2>&1'

@@ -214,9 +214,22 @@ fix_akmods_ostree_post() {
   if grep -q 'runuser' "${ostree_post}"; then
     return 0
   fi
+  # Env prefix on the akmodsbuild invocation:
+  #  CC=clang: the CachyOS LTO kernel tree is clang-built; its saved CFLAGS
+  #    carry clang-only options, so the module must be built with the same
+  #    compiler family as the kernel.
+  #  KCFLAGS="-fno-lto -fno-split-lto-unit": the kernel CFLAGS enable thin
+  #    LTO (-flto=thin -fsplit-lto-unit), which makes the .o files LLVM
+  #    bitcode. NVIDIA's Kbuild partial-links them with `ld -r`, which cannot
+  #    read bitcode ("file format not recognized"). KCFLAGS is appended by
+  #    the kernel Makefile after the kernel CFLAGS, so -fno-lto wins and the
+  #    module objects are plain ELF again. Non-LTO modules against an LTO
+  #    kernel are the standard supported combination.
+  #  MAKEFLAGS="-j$(nproc)": parallel kernel-module make ($(nproc) expands
+  #    at scriptlet runtime, i.e. the build container's core count).
   # Note: '&' is special in the sed replacement (it means "the match"), so
   # the shell '&&' chain must be written as '\&\&' here.
-  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& CC=clang /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
+  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& CC=clang KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
     die "failed to patch ${ostree_post}"
   fi
   grep -q '/usr/sbin/runuser' "${ostree_post}" || die "akmods-ostree-post privilege-drop patch did not apply"

@@ -1,12 +1,14 @@
 # Ryven-WL: ublue base-main (no DE) + Hyprland + QuickShell.
-# Kernel (CachyOS COPR) and NVIDIA (RPMFusion akmod) resolve at compose time.
+# Kernel (CachyOS COPR) and NVIDIA (Negativo17 akmod) resolve at compose time.
 FROM scratch AS ctx
 COPY build_files /
 COPY system_files /system_files
 COPY system_files_wl /system_files_wl
 
-# Base image digest-pinned for reproducible builds (Renovate bumps).
-FROM ghcr.io/ublue-os/base-main:latest@sha256:79773ec589231a4101f252ba7a2d103caffcf284e483aa49880f3d640e82bf6d
+# Base image: floating ':44' tag = newest ublue F44 build, no digest or
+# version lock (zero-maintenance policy). Renovate automerges the tag bump
+# when the baseline moves to the next Fedora release.
+FROM ghcr.io/ublue-os/base-main:44
 
 RUN rm -rf /opt && mkdir -p /opt
 

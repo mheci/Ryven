@@ -36,14 +36,18 @@ readonly FEDORA_RELEASE=44
 # extras subrepo from terra-release-extras (%package extras), not a product.
 readonly -a TERRA_REPOS=(terra terra-extras terra-multimedia terra-mesa)
 readonly -a FUSION_REPOS=(rpmfusion-free rpmfusion-free-updates rpmfusion-nonfree rpmfusion-nonfree-updates)
-# Repos excluded from NVIDIA driver transactions. Negativo17's
+# Repos excluded from the NVIDIA driver transaction. Negativo17's
 # fedora-multimedia repo (enabled on the base image) ships same-version
 # driver packages under different names (nvidia-driver-common) that
-# file-conflict with the RPMFusion xorg-x11-drv-nvidia set, so the driver
-# stack resolves strictly from RPMFusion (+Fedora). Exact repo IDs only:
-# dnf5 hard-errors on a --disablerepo pattern that matches nothing.
-# Base defaults elsewhere are left untouched.
+# file-conflict during the transaction, so the driver stack resolves
+# strictly from the 'fedora-nvidia' repo (added per Negativo17's
+# instructions) + Fedora. Exact repo IDs only: dnf5 hard-errors on a
+# --disablerepo pattern that matches nothing. Base defaults elsewhere are
+# left untouched.
 readonly -a NVIDIA_EXCLUDE_REPOS=(--disablerepo=fedora-multimedia)
+# The NVIDIA driver stack comes from Negativo17 (repo ID fedora-nvidia,
+# added via their repofile). RPMFusion is kept only for non-driver
+# packages (ffmpeg, libdvdcss, generic i686 fallbacks in install_priority).
 # CachyOS kernel for Fedora: LLVM-ThinLTO flavor (COPR
 # bieszczaders/kernel-cachyos-lto, BORE scheduler). Weekly rebuilds track the
 # COPR tip; COPR offers no digest pins, so the tag is intentionally floating
@@ -360,9 +364,22 @@ fix_akmods_ostree_post() {
   if grep -q 'runuser' "${ostree_post}"; then
     return 0
   fi
+  # Env prefix on the akmodsbuild invocation:
+  #  CC=clang: the CachyOS LTO kernel tree is clang-built; its saved CFLAGS
+  #    carry clang-only options, so the module must be built with the same
+  #    compiler family as the kernel.
+  #  KCFLAGS="-fno-lto -fno-split-lto-unit": the kernel CFLAGS enable thin
+  #    LTO (-flto=thin -fsplit-lto-unit), which makes the .o files LLVM
+  #    bitcode. NVIDIA's Kbuild partial-links them with `ld -r`, which cannot
+  #    read bitcode ("file format not recognized"). KCFLAGS is appended by
+  #    the kernel Makefile after the kernel CFLAGS, so -fno-lto wins and the
+  #    module objects are plain ELF again. Non-LTO modules against an LTO
+  #    kernel are the standard supported combination.
+  #  MAKEFLAGS="-j$(nproc)": parallel kernel-module make ($(nproc) expands
+  #    at scriptlet runtime, i.e. the build container's core count).
   # Note: '&' is special in the sed replacement (it means "the match"), so
   # the shell '&&' chain must be written as '\&\&' here.
-  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& CC=clang /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
+  if ! sed -E -i '0,/^([[:space:]]*)akmodsbuild /s||\1chown akmods "${tmpdir}" "${tmpdir}results" \&\& unset TMPDIR \&\& CC=clang KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" /usr/sbin/runuser -u akmods -- /usr/bin/akmodsbuild |' "${ostree_post}"; then
     die "failed to patch ${ostree_post}"
   fi
   grep -q '/usr/sbin/runuser' "${ostree_post}" || die "akmods-ostree-post privilege-drop patch did not apply"
@@ -396,19 +413,57 @@ apply_selinux_game_booleans() {
 # Secure Boot.
 dnf5 -y install gcc make clang llvm
 # Install the akmods tooling first: the akmod-nvidia %post (which runs
-# inside the fusion transaction below) invokes
+# inside the Negativo17 transaction below) invokes
 # /usr/sbin/akmods-ostree-post, which only exists once the akmods package
 # is in place.
 dnf5 -y install akmods
 # The akmod-nvidia %post builds the kmod inside that transaction; make the
 # build work before the transaction runs (see fix_akmods_ostree_post).
 fix_akmods_ostree_post
-dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" \
+# Add the Negativo17 NVIDIA repo exactly as they instruct. The repofile
+# defines the 'fedora-nvidia' repo; re-adding is idempotent (it overwrites
+# the same file). Retried like the other flaky remote bootstraps.
+for neg17_attempt in 1 2 3 4 5 6; do
+  dnf5 -y config-manager addrepo \
+    --from-repofile="https://negativo17.org/repos/fedora-nvidia.repo" && break
+  [[ ${neg17_attempt} -lt 6 ]] || die 'Negativo17 addrepo failed after 6 attempts'
+  echo "Negativo17 addrepo attempt ${neg17_attempt}/6 failed; retrying in 15s" >&2
+  sleep 15
+done
+# NVIDIA driver stack from Negativo17 (their Fedora packaging, no version
+# locks: the repo always serves the current driver release):
+#  akmod-nvidia           kmod built by akmods (bundles the nvidia-kmod
+#                         SRPM; its nvidia-kmod-common dep is pulled in)
+#  nvidia-driver          meta: docs, nvidia-pcc, application profiles
+#  xorg-x11-nvidia        X11 driver (nvidia_drv.so) + xorg.conf.d
+#  nvidia-driver-libs     libEGL_nvidia, libGLES, VDPAU libvdpau_nvidia,
+#                         Vulkan ICD + implicit layer (+.i686)
+#  nvidia-driver-common   libnvidia-ml.so.1, nvidia-dbus.conf (+.i686)
+#  nvidia-driver-cuda     nvidia-smi, CUDA MPS, OpenCL ICD
+#  nvidia-driver-cuda-libs libcuda, nvcuvid, nvidia-encode, ptxjit,
+#                         sandboxutils (+.i686)
+#  nvidia-libXNVCtrl      XNVCtrl
+#  nvidia-settings        configuration UI
+#  nvidia-modprobe        udev device nodes
+#  nvidia-persistenced    persistence daemon
+#  libnvidia-fbc          Frame Buffer Capture (Steam) (+.i686)
+#  nvidia-driver-selinux  SELinux policy module for the driver
+# fedora-multimedia (enabled on the base image) ships same-version driver
+# packages under different names that file-conflict during the
+# transaction, so it stays disabled for this transaction only.
+dnf5 -y install --enablerepo=fedora-nvidia "${NVIDIA_EXCLUDE_REPOS[@]}" \
   akmod-nvidia \
-  xorg-x11-drv-nvidia xorg-x11-drv-nvidia-libs \
-  xorg-x11-drv-nvidia-libs.i686 \
-  xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-cuda-libs \
-  xorg-x11-drv-nvidia-cuda-libs.i686
+  nvidia-driver \
+  xorg-x11-nvidia \
+  nvidia-driver-libs nvidia-driver-libs.i686 \
+  nvidia-driver-common nvidia-driver-common.i686 \
+  nvidia-driver-cuda nvidia-driver-cuda-libs nvidia-driver-cuda-libs.i686 \
+  nvidia-libXNVCtrl \
+  nvidia-settings \
+  nvidia-modprobe \
+  nvidia-persistenced \
+  libnvidia-fbc libnvidia-fbc.i686 \
+  nvidia-driver-selinux
 # akmods init() opens /run/akmods/akmods.lock; the package's tmpfiles.d line
 # (d /run/akmods 0770 root akmods) is normally applied by systemd at boot,
 # so create it for this unbooted compose container.
@@ -420,7 +475,13 @@ chmod 0770 /run/akmods
 # -fexperimental-late-parse-attributes, -fsplit-lto-unit,
 # -mstack-alignment=8 all rejected by gcc); the module must be built with
 # the same compiler family as the kernel.
-CC=clang akmods --force --kernels "${KVER}"
+# KCFLAGS="-fno-lto -fno-split-lto-unit": the kernel CFLAGS enable thin LTO,
+# which makes module .o files LLVM bitcode; NVIDIA's Kbuild partial-links
+# them with `ld -r`, which cannot read bitcode. KCFLAGS is appended after
+# the kernel CFLAGS, so the module objects are plain ELF (standard
+# non-LTO-module-against-LTO-kernel combination).
+# MAKEFLAGS: parallel make for the kernel-module build.
+CC=clang KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" akmods --force --kernels "${KVER}"
 if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
   # Dump the akmod build log before failing so CI stdout shows the real
   # compiler error instead of just the missing .ko.
@@ -469,19 +530,13 @@ kargs = [
 ]
 EOF
 
-# Fusion VA-API NVIDIA driver for both ISAs (Steam 32-bit). Exclude CUDA.
-# vulkan-loader both ISAs from the priority ladder. nvidia-settings from
-# Fusion if the akmod path did not already provide it.
-dnf5 -y install \
-  "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" \
-  --exclude='cuda*' \
-  --exclude='*nvidia*cuda*' \
-  libva-nvidia-driver.x86_64 \
-  libva-nvidia-driver.i686
+# VA-API for the NVIDIA driver (nvdec-vaapi-driver): libva-nvidia-driver
+# is an official Fedora package again as of F44 (0.0.16) and only requires
+# libEGL.so.1, so it installs cleanly next to the Negativo17 driver stack.
+# Both ISAs (Steam 32-bit).
+dnf5 -y install libva-nvidia-driver.x86_64 libva-nvidia-driver.i686
+# vulkan-loader both ISAs from the priority ladder.
 install_priority vulkan-loader.x86_64 vulkan-loader.i686 vulkan-tools
-if ! have_rpm nvidia-settings; then
-  dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" --exclude='cuda*' nvidia-settings
-fi
 
 # Base OS: just (ujust), Secure Boot tooling, LUKS/TPM unlock, chrony (not
 # timesyncd), podman (not docker), firewalld, git+gh, sudo-rs, Flatpak binary
@@ -971,6 +1026,14 @@ if [[ ! -f ${PROTON_DEST}/proton-cachyos/compatibilitytool.vdf && ! -f ${PROTON_
 fi
 rm -rf /tmp/proton-cachyos
 
+# Zero-maintenance freshness: pull the latest available F44 package set
+# from every enabled source (Fedora + Negativo17 + Terra + COPRs left
+# enabled) so the image is never older than the current release tip.
+# Runs after all installs so it also upgrades anything installed earlier
+# in this layer. The floating :44 base-image tag already tracks the
+# current ublue F44 build; this closes the gap to today's Fedora updates.
+dnf5 -y --refresh upgrade
+
 # Build-time invariants. No GPU, systemd is not PID 1: we only check files,
 # rpmdb, and is-enabled symlinks. Any FAIL sets fail=1; die at the end so
 # the layer does not publish a half-configured image.
@@ -1001,6 +1064,17 @@ check 'chronyd enabled' unit_enabled chronyd.service
 check 'sshd not enabled' bash -c 's=$(systemctl is-enabled sshd.service 2>/dev/null || true); [[ $s != enabled ]]'
 check 'firewalld enabled' unit_enabled firewalld.service
 check 'nvidia kmod present' bash -c 'find /usr/lib/modules -name "nvidia*.ko*" -print -quit | grep -q .'
+check 'nvidia-driver (neg17)' rpm -q nvidia-driver
+check 'xorg-x11-nvidia (neg17)' rpm -q xorg-x11-nvidia
+check 'nvidia-driver-libs (neg17)' rpm -q nvidia-driver-libs
+check 'nvidia-driver-common (neg17)' rpm -q nvidia-driver-common
+check 'nvidia-driver-cuda (neg17)' rpm -q nvidia-driver-cuda
+check 'nvidia-driver-selinux (neg17)' rpm -q nvidia-driver-selinux
+check 'libnvidia-fbc (neg17)' rpm -q libnvidia-fbc
+check 'nvidia-settings' rpm -q nvidia-settings
+check 'nvidia-smi' command -v nvidia-smi
+check 'nvidia vulkan icd' test -f /usr/share/vulkan/icd.d/nvidia_icd.x86_64.json
+check 'nvidia va api driver' test -f /usr/lib64/dri/nvidia_drv_video.so
 check 'ffmpeg rpm' rpm -q ffmpeg
 check 'libva-nvidia-driver' rpm -q libva-nvidia-driver
 check 'zram generator disabled' bash -c '! systemctl is-enabled systemd-zram-setup@zram0.service 2>/dev/null | grep -qx enabled'

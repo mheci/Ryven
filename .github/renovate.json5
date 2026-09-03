@@ -16,8 +16,12 @@
     "custom.regex",
   ],
 
+  // Zero-maintenance policy: the Ryven Containerfiles use floating Fedora
+  // release tags (e.g. ':44'), never digest or version pins. Digest pinning
+  // is disabled so Renovate keeps the tags floating; it manages the tags
+  // themselves (44 -> 45) via the packageRules below.
   "dockerfile": {
-    "pinDigests": true,
+    "pinDigests": false,
   },
 
   "pre-commit": {
@@ -25,32 +29,6 @@
   },
 
   "customManagers": [
-    {
-      "customType": "regex",
-      "description": "Pin ghcr.io/ublue-os/kinoite-main digest in Containerfile",
-      "managerFilePatterns": ["/(^|/)Containerfile$/"],
-      "matchStrings": [
-        "FROM ghcr.io/ublue-os/kinoite-main:latest@(?<currentDigest>sha256:[a-f0-9]+)",
-      ],
-      "datasourceTemplate": "docker",
-      "registryUrlTemplate": "https://ghcr.io",
-      "depNameTemplate": "ublue-os/kinoite-main",
-      "packageNameTemplate": "ublue-os/kinoite-main",
-      "autoReplaceStringTemplate": "FROM ghcr.io/ublue-os/kinoite-main:latest@{{{newDigest}}}",
-    },
-    {
-      "customType": "regex",
-      "description": "Pin ghcr.io/ublue-os/base-main digest in WL/Sericea Containerfiles",
-      "managerFilePatterns": ["/(^|/)Containerfile\\.(wl|sericea)$/"],
-      "matchStrings": [
-        "FROM ghcr.io/ublue-os/base-main:latest@(?<currentDigest>sha256:[a-f0-9]+)",
-      ],
-      "datasourceTemplate": "docker",
-      "registryUrlTemplate": "https://ghcr.io",
-      "depNameTemplate": "ublue-os/base-main",
-      "packageNameTemplate": "ublue-os/base-main",
-      "autoReplaceStringTemplate": "FROM ghcr.io/ublue-os/base-main:latest@{{{newDigest}}}",
-    },
     {
       "customType": "regex",
       "description": "bootc-image-builder image in ryven.env",
@@ -76,9 +54,9 @@
       "matchUpdateTypes": ["pin", "pinDigest"],
     },
     {
-      "description": "Automerge digest bumps for the Ryven Containerfile base image",
-      "matchManagers": ["dockerfile", "custom.regex"],
-      "matchUpdateTypes": ["digest", "pinDigest"],
+      "description": "Automerge base-image tag bumps (e.g. 44 -> 45) for the Ryven Containerfiles",
+      "matchManagers": ["dockerfile"],
+      "matchDepNames": ["ublue-os/kinoite-main", "ublue-os/base-main"],
       "automerge": true,
     },
     {

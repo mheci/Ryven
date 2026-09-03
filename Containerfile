@@ -4,8 +4,10 @@ COPY build_files /
 COPY system_files /system_files
 
 # Base Image
-# Track ghcr.io/ublue-os/kinoite-main:latest; digest pinned for reproducible builds (Renovate bumps).
-FROM ghcr.io/ublue-os/kinoite-main:latest@sha256:5d1d4fa0ec808a34a879ce03854a93d9d708bdc11a486992ae3435525d363f3b
+# Floating ':44' tag: always pulls the newest ublue F44 build, no digest or
+# version lock (zero-maintenance policy). Renovate automerges the tag bump
+# when the baseline moves to the next Fedora release.
+FROM ghcr.io/ublue-os/kinoite-main:44
 
 # /opt must be a real directory so RPM payloads (Zen, Brave) persist.
 RUN rm -rf /opt && mkdir -p /opt
