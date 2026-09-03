@@ -327,19 +327,22 @@ fi
 # rebuild if the openrazer kmod is missing.
 fix_akmods_ostree_post
 if have_rpm akmod-openrazer; then
-  if ! find "/usr/lib/modules/${KVER}" -name 'openrazer*.ko*' -print -quit | grep -q .; then
+  if ! find "/usr/lib/modules/${KVER}/extra/openrazer" -name '*.ko*' -print -quit 2>/dev/null | grep -q .; then
     # Build via the patched scriptlet (same path as the %post): it carries
     # LLVM=1/KCFLAGS into akmodsbuild (env reset by the akmods client's
     # runuser -c call would otherwise leave gcc/ld.bfd against the
     # kernel's clang-LTO CFLAGS).
+    # The akmod installs its modules (razeraccessory/razerkbd/razerkraken,
+    # plus razermouse on some builds) under extra/openrazer/, NOT as
+    # openrazer.ko - the check below looks at that directory.
     orzsrpm=$(ls /usr/src/akmods/openrazer-kmod-*.src.rpm 2>/dev/null | LC_ALL=C sort -V | tail -n1)
     [[ -n ${orzsrpm} ]] || die 'openrazer akmod SRPM not found under /usr/src/akmods'
     /usr/sbin/akmods-ostree-post openrazer "${orzsrpm}"
   fi
-  find "/usr/lib/modules/${KVER}" -name 'openrazer*.ko*' -print -quit | grep -q . || {
+  find "/usr/lib/modules/${KVER}/extra/openrazer" -name '*.ko*' -print -quit 2>/dev/null | grep -q . || {
     echo '--- akmods log (last 40 lines) ---' >&2
     tail -n 40 /var/log/akmod/*.log /var/cache/akmods/*/*.failed.log 2>/dev/null || true
-    die "akmods produced no openrazer.ko for ${KVER}"
+    die "akmods produced no openrazer kmod (extra/openrazer) for ${KVER}"
   }
 fi
 # Last kmod build done - drop the build toolchain from the image.
