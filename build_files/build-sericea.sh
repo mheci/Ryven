@@ -186,6 +186,12 @@ EOF
 dnf5 -y install libva-nvidia-driver.x86_64 libva-nvidia-driver.i686
 install_priority vulkan-loader.x86_64 vulkan-loader.i686 vulkan-tools egl-wayland
 
+# The base image bundles tuned; its tuned-ppd subpackage provides
+# ppd-service, which Conflicts with power-profiles-daemon (our power
+# manager, pinned by an invariant). Drop tuned-ppd before the install.
+if have_rpm tuned-ppd; then
+  dnf5 -y remove tuned-ppd
+fi
 dnf5 -y install \
   just mokutil shim efibootmgr \
   cryptsetup clevis clevis-luks clevis-dracut tpm2-tools \

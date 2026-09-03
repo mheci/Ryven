@@ -561,6 +561,12 @@ install_priority vulkan-loader.x86_64 vulkan-loader.i686 vulkan-tools
 # NOTE: no '#' comment lines inside the install command below - a comment
 # line terminates the backslash continuation, and the remaining lines would
 # execute as their own command (observed: 'hunspell' run as a binary).
+# The base image bundles tuned; its tuned-ppd subpackage provides
+# ppd-service, which Conflicts with power-profiles-daemon (our power
+# manager, pinned by an invariant). Drop tuned-ppd before the install.
+if have_rpm tuned-ppd; then
+  dnf5 -y remove tuned-ppd
+fi
 dnf5 -y install \
   just mokutil shim efibootmgr \
   cryptsetup clevis clevis-luks clevis-dracut tpm2-tools \
