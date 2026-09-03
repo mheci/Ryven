@@ -305,63 +305,24 @@ apply_selinux_game_booleans() {
 }
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
 # BetterBird (betterbird.eu) — Thunderbird fork. Not in any Fedora repo, so
-# the LATEST x86_64 release is pulled at compose time (weekly CI rebuilds =
-# always current on the published image). The official download site is an
-# auto-generated file listing; the current release of each ESR line carries
-# a "-latest-" marker, which we prefer. The project publishes no checksums
-# (verified 2026-09), so integrity rests on HTTPS from betterbird.eu; the
-# build fails closed on any download/extract error or missing binary.
-# Official sources for the same file set, in preference order:
-# BetterBird's BunnyCDN bulk-download mirror first — a CDN built for
-# exactly this (the origin sits on small shared hosting that
-# intermittently drops connections from datacenter/CI networks) — and
-# the origin as canonical fallback. Identical listing verified 2026-09-03.
-readonly BETTERBIRD_SOURCES=(
-  'https://betterbird-downloads.b-cdn.net'
-  'https://www.betterbird.eu/downloads'
-)
-
+# the LATEST x86_64 release is pulled at build time (weekly CI rebuilds =
+# always current on the published image). The fetch runs on the CI host
+# (Justfile: fetch-betterbird) into the build context, and this installs
+# it from /ctx: the in-container network fetch to betterbird.eu / its CDN
+# has repeatedly killed the build container without a trace, while a
+# host-side fetch has full log visibility and fails hard and visibly. The
+# project publishes no checksums (verified 2026-09), so integrity rests on
+# HTTPS from the official sources; the build fails closed on any download
+# or extract error or missing binary.
 install_betterbird() {
-  local listing files url ver base base2
-  listing=''
-  for base in "${BETTERBIRD_SOURCES[@]}"; do
-    # --max-time caps each attempt (the source can drop the connection
-    # silently; a stalled read must not run the whole retry budget).
-    if listing=$(curl -fsSL --proto '=https' --max-time 60 --retry 2 --retry-all-errors --retry-delay 5 --retry-max-time 150 --connect-timeout 30 "${base}/" 2>/tmp/bb-listing.err); then
-      break
-    fi
-    echo "BetterBird: listing fetch failed from ${base} (last error: $(tail -n1 /tmp/bb-listing.err 2>/dev/null)); trying next source" >&2
-  done
-  if [[ -z ${listing} ]]; then
-    echo '--- listing fetch errors (last attempt) ---' >&2
-    cat /tmp/bb-listing.err 2>/dev/null || true
-    die 'BetterBird: listing fetch failed from all sources'
-  fi
-  # Current release of each ESR line first ("-latest-" marker), then every
-  # plain en-US x86_64 build. Exclude the Previous/ archive; highest
-  # version wins.
-  files=$(grep -oE 'LinuxArchive/betterbird-[^"]*-latest-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -v 'Previous/' | LC_ALL=C sort -V || true)
-  if [[ -z ${files} ]]; then
-    files=$(grep -oE 'LinuxArchive/betterbird-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -vE 'Previous/|-latest-' | LC_ALL=C sort -V || true)
-  fi
-  [[ -n ${files} ]] || die 'BetterBird: no x86_64 tarball found in the download listing'
-  base2=''
-  for base2 in "${BETTERBIRD_SOURCES[@]}"; do
-    [[ ${base2} != ${base} ]] && break
-  done
-  url="${base}/$(tail -n1 <<<"${files}")"
-  ver=$(basename "${url}" .en-US.linux-x86_64.tar.xz)
-  if ! curl -fsSL --proto '=https' --retry 2 --retry-all-errors --retry-delay 10 --retry-max-time 900 --connect-timeout 30 --max-time 900 -o /tmp/betterbird.tar.xz "${url}" 2>/tmp/bb-dl.err; then
-    echo "BetterBird: tarball download failed from ${base} (last error: $(tail -n1 /tmp/bb-dl.err 2>/dev/null)); retrying via ${base2}" >&2
-    curl -fsSL --proto '=https' --retry 2 --retry-all-errors --retry-delay 10 --retry-max-time 900 --connect-timeout 30 --max-time 900 -o /tmp/betterbird.tar.xz "${base2}/$(tail -n1 <<<"${files}")" 2>>/tmp/bb-dl.err || {
-      echo '--- tarball download errors ---' >&2
-      tail -n 20 /tmp/bb-dl.err >&2 || true
-      die 'BetterBird: tarball download failed from all sources'
-    }
-  fi
+  local tarball ver
+  tarball=$(find /ctx/_build/betterbird -name 'betterbird-*.en-US.linux-x86_64.tar.xz' -print -quit 2>/dev/null || true)
+  [[ -n ${tarball} ]] || die 'BetterBird tarball not found under /ctx/_build/betterbird (host fetch-betterbird step missing?)'
+  ver=$(basename "${tarball}" .en-US.linux-x86_64.tar.xz)
   rm -rf /opt/betterbird
-  tar -xJf /tmp/betterbird.tar.xz -C /opt
+  tar -xJf "${tarball}" -C /opt
   mv /opt/betterbird "/opt/${ver}"
   ln -sfn "/opt/${ver}" /opt/betterbird
   # /usr/local is a symlink to the writable /var/usrlocal in the image.
@@ -373,7 +334,6 @@ install_betterbird() {
     /usr/share/icons/hicolor/256x256/apps/betterbird.png
   install -D -m 0644 "/opt/${ver}/chrome/icons/default/default64.png" \
     /usr/share/icons/hicolor/64x64/apps/betterbird.png
-  rm -f /tmp/betterbird.tar.xz
   [[ -x "/opt/${ver}/betterbird" ]] || die "BetterBird ${ver}: binary missing after install"
   echo "BetterBird ${ver} installed (latest x86_64 release)"
 }

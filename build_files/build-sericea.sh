@@ -85,11 +85,11 @@ KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | L
 # CachyOS kernel via their akmod-nvidia (no prebuilt modules exist for it;
 # see build.sh for the full package-by-package rationale). The LTO kernel
 # tree is clang-built, so clang/llvm join the build deps.
-# BetterBird first: it is a plain file fetch with no dependency on the
-# compose (see install_betterbird in common.sh), and placing it at the top
-# means any fetch problem surfaces at minute one (clean container state,
-# full curl errors in the log) instead of after the heavy kmod builds.
-# Desktop entry + icons ship in system_files.
+# BetterBird early: it is a plain disk install from the build context
+# (the host fetch-betterbird step put the latest x86_64 tarball in
+# /ctx/_build/betterbird/), with no dependency on the compose (see
+# install_betterbird in common.sh). Desktop entry + icons ship in
+# system_files.
 install_betterbird
 dnf5 -y install gcc make clang llvm lld
 # Install the akmods tooling first: the akmod-nvidia %post (which runs
