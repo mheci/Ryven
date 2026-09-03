@@ -312,25 +312,32 @@ apply_selinux_game_booleans() {
 # a "-latest-" marker, which we prefer. The project publishes no checksums
 # (verified 2026-09), so integrity rests on HTTPS from betterbird.eu; the
 # build fails closed on any download/extract error or missing binary.
-# Official sources for the same file set: the origin plus BetterBird's own
-# BunnyCDN mirror (identical listing verified 2026-09-03). The origin sits
-# on small shared hosting and intermittently fails from CI runners, so the
-# fetch falls over to the CDN.
+# Official sources for the same file set, in preference order:
+# BetterBird's BunnyCDN bulk-download mirror first — a CDN built for
+# exactly this (the origin sits on small shared hosting that
+# intermittently drops connections from datacenter/CI networks) — and
+# the origin as canonical fallback. Identical listing verified 2026-09-03.
 readonly BETTERBIRD_SOURCES=(
-  'https://www.betterbird.eu/downloads'
   'https://betterbird-downloads.b-cdn.net'
+  'https://www.betterbird.eu/downloads'
 )
 
 install_betterbird() {
   local listing files url ver base base2
   listing=''
   for base in "${BETTERBIRD_SOURCES[@]}"; do
-    if listing=$(curl -fsSL --proto '=https' --retry 3 --retry-all-errors --retry-delay 5 --retry-max-time 300 --connect-timeout 30 "${base}/" 2>/dev/null); then
+    # --max-time caps each attempt (the source can drop the connection
+    # silently; a stalled read must not run the whole retry budget).
+    if listing=$(curl -fsSL --proto '=https' --max-time 60 --retry 2 --retry-all-errors --retry-delay 5 --retry-max-time 150 --connect-timeout 30 "${base}/" 2>/tmp/bb-listing.err); then
       break
     fi
-    echo "BetterBird: listing fetch failed from ${base}; trying next source" >&2
+    echo "BetterBird: listing fetch failed from ${base} (last error: $(tail -n1 /tmp/bb-listing.err 2>/dev/null)); trying next source" >&2
   done
-  [[ -n ${listing} ]] || die 'BetterBird: listing fetch failed from all sources'
+  if [[ -z ${listing} ]]; then
+    echo '--- listing fetch errors (last attempt) ---' >&2
+    cat /tmp/bb-listing.err 2>/dev/null || true
+    die 'BetterBird: listing fetch failed from all sources'
+  fi
   # Current release of each ESR line first ("-latest-" marker), then every
   # plain en-US x86_64 build. Exclude the Previous/ archive; highest
   # version wins.
@@ -345,9 +352,13 @@ install_betterbird() {
   done
   url="${base}/$(tail -n1 <<<"${files}")"
   ver=$(basename "${url}" .en-US.linux-x86_64.tar.xz)
-  if ! curl -fsSL --proto '=https' --retry 3 --retry-all-errors --retry-delay 10 --retry-max-time 1800 --connect-timeout 30 --max-time 1500 -o /tmp/betterbird.tar.xz "${url}"; then
-    echo "BetterBird: tarball download failed from ${base}; retrying via ${base2}" >&2
-    curl -fsSL --proto '=https' --retry 3 --retry-all-errors --retry-delay 10 --retry-max-time 1800 --connect-timeout 30 --max-time 1500 -o /tmp/betterbird.tar.xz "${base2}/$(tail -n1 <<<"${files}")"
+  if ! curl -fsSL --proto '=https' --retry 2 --retry-all-errors --retry-delay 10 --retry-max-time 900 --connect-timeout 30 --max-time 900 -o /tmp/betterbird.tar.xz "${url}" 2>/tmp/bb-dl.err; then
+    echo "BetterBird: tarball download failed from ${base} (last error: $(tail -n1 /tmp/bb-dl.err 2>/dev/null)); retrying via ${base2}" >&2
+    curl -fsSL --proto '=https' --retry 2 --retry-all-errors --retry-delay 10 --retry-max-time 900 --connect-timeout 30 --max-time 900 -o /tmp/betterbird.tar.xz "${base2}/$(tail -n1 <<<"${files}")" 2>>/tmp/bb-dl.err || {
+      echo '--- tarball download errors ---' >&2
+      tail -n 20 /tmp/bb-dl.err >&2 || true
+      die 'BetterBird: tarball download failed from all sources'
+    }
   fi
   rm -rf /opt/betterbird
   tar -xJf /tmp/betterbird.tar.xz -C /opt

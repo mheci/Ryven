@@ -419,6 +419,80 @@ apply_selinux_game_booleans() {
   return 0
 }
 
+# BetterBird (betterbird.eu) — Thunderbird fork. Not in any Fedora repo, so
+# the LATEST x86_64 release is pulled at compose time (weekly CI rebuilds =
+# always current on the published image). The official download site is an
+# auto-generated file listing; the current release of each ESR line carries
+# a "-latest-" marker, which we prefer. The project publishes no checksums
+# (verified 2026-09), so integrity rests on HTTPS from betterbird.eu; the
+# build fails closed on any download/extract error or missing binary.
+# (Local copy of the common.sh definition; this script does not source it.)
+# Official sources for the same file set, in preference order:
+# BetterBird's BunnyCDN bulk-download mirror first — a CDN built for
+# exactly this (the origin sits on small shared hosting that
+# intermittently drops connections from datacenter/CI networks) — and
+# the origin as canonical fallback. Identical listing verified 2026-09-03.
+readonly BETTERBIRD_SOURCES=(
+  'https://betterbird-downloads.b-cdn.net'
+  'https://www.betterbird.eu/downloads'
+)
+
+install_betterbird() {
+  local listing files url ver base base2
+  listing=''
+  for base in "${BETTERBIRD_SOURCES[@]}"; do
+    # --max-time caps each attempt (the source can drop the connection
+    # silently; a stalled read must not run the whole retry budget).
+    if listing=$(curl -fsSL --proto '=https' --max-time 60 --retry 2 --retry-all-errors --retry-delay 5 --retry-max-time 150 --connect-timeout 30 "${base}/" 2>/tmp/bb-listing.err); then
+      break
+    fi
+    echo "BetterBird: listing fetch failed from ${base} (last error: $(tail -n1 /tmp/bb-listing.err 2>/dev/null)); trying next source" >&2
+  done
+  if [[ -z ${listing} ]]; then
+    echo '--- listing fetch errors (last attempt) ---' >&2
+    cat /tmp/bb-listing.err 2>/dev/null || true
+    die 'BetterBird: listing fetch failed from all sources'
+  fi
+  # Current release of each ESR line first ("-latest-" marker), then every
+  # plain en-US x86_64 build. Exclude the Previous/ archive; highest
+  # version wins.
+  files=$(grep -oE 'LinuxArchive/betterbird-[^"]*-latest-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -v 'Previous/' | LC_ALL=C sort -V || true)
+  if [[ -z ${files} ]]; then
+    files=$(grep -oE 'LinuxArchive/betterbird-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -vE 'Previous/|-latest-' | LC_ALL=C sort -V || true)
+  fi
+  [[ -n ${files} ]] || die 'BetterBird: no x86_64 tarball found in the download listing'
+  base2=''
+  for base2 in "${BETTERBIRD_SOURCES[@]}"; do
+    [[ ${base2} != ${base} ]] && break
+  done
+  url="${base}/$(tail -n1 <<<"${files}")"
+  ver=$(basename "${url}" .en-US.linux-x86_64.tar.xz)
+  if ! curl -fsSL --proto '=https' --retry 2 --retry-all-errors --retry-delay 10 --retry-max-time 900 --connect-timeout 30 --max-time 900 -o /tmp/betterbird.tar.xz "${url}" 2>/tmp/bb-dl.err; then
+    echo "BetterBird: tarball download failed from ${base} (last error: $(tail -n1 /tmp/bb-dl.err 2>/dev/null)); retrying via ${base2}" >&2
+    curl -fsSL --proto '=https' --retry 2 --retry-all-errors --retry-delay 10 --retry-max-time 900 --connect-timeout 30 --max-time 900 -o /tmp/betterbird.tar.xz "${base2}/$(tail -n1 <<<"${files}")" 2>>/tmp/bb-dl.err || {
+      echo '--- tarball download errors ---' >&2
+      tail -n 20 /tmp/bb-dl.err >&2 || true
+      die 'BetterBird: tarball download failed from all sources'
+    }
+  fi
+  rm -rf /opt/betterbird
+  tar -xJf /tmp/betterbird.tar.xz -C /opt
+  mv /opt/betterbird "/opt/${ver}"
+  ln -sfn "/opt/${ver}" /opt/betterbird
+  # /usr/local is a symlink to the writable /var/usrlocal in the image.
+  mkdir -p /usr/local/bin
+  ln -sfn "/opt/${ver}/betterbird" /usr/local/bin/betterbird
+  # Icon for the .desktop entry (shipped in system_files); the tarball has
+  # no desktop file of its own.
+  install -D -m 0644 "/opt/${ver}/chrome/icons/default/default256.png" \
+    /usr/share/icons/hicolor/256x256/apps/betterbird.png
+  install -D -m 0644 "/opt/${ver}/chrome/icons/default/default64.png" \
+    /usr/share/icons/hicolor/64x64/apps/betterbird.png
+  rm -f /tmp/betterbird.tar.xz
+  [[ -x "/opt/${ver}/betterbird" ]] || die "BetterBird ${ver}: binary missing after install"
+  echo "BetterBird ${ver} installed (latest x86_64 release)"
+}
+
 # NVIDIA kernel modules built for the CachyOS kernel via RPMFusion akmod.
 # The ublue prebuilt kmod-nvidia targets the OGC kernel and the CachyOS COPR
 # ships no prebuilt NVIDIA modules (per COPR policy use RPMFusion or
@@ -427,6 +501,12 @@ apply_selinux_game_booleans() {
 # clang-built, so clang/llvm join the build deps. The result is unsigned:
 # Secure Boot hosts must enroll their own MOK and sign it, or disable
 # Secure Boot.
+# BetterBird first: it is a plain file fetch with no dependency on the
+# compose, and placing it at the top means any fetch problem surfaces at
+# minute one (clean container state, full curl errors in the log) instead
+# of after the heavy kmod builds. (Function in the helper section above;
+# the .desktop entry + icons ship in system_files.)
+install_betterbird
 dnf5 -y install gcc make clang llvm lld
 # Install the akmods tooling first: the akmod-nvidia %post (which runs
 # inside the Negativo17 transaction below) invokes
@@ -812,72 +892,7 @@ EOF
 # Template user profile (copy via `ujust falcond-profile name=<game-exe>`).
 install -D -m 0644 /usr/share/ryven/falcond/ryven-gaming-template.conf \
   /usr/share/falcond/profiles/user/ryven-gaming-template.conf
-# BetterBird (betterbird.eu) — Thunderbird fork. Not in any Fedora repo, so
-# the LATEST x86_64 release is pulled at compose time (weekly CI rebuilds =
-# always current on the published image). The official download site is an
-# auto-generated file listing; the current release of each ESR line carries
-# a "-latest-" marker, which we prefer. The project publishes no checksums
-# (verified 2026-09), so integrity rests on HTTPS from betterbird.eu; the
-# build fails closed on any download/extract error or missing binary.
-# (Local copy of the common.sh definition; this script does not source it.)
-# Official sources for the same file set: the origin plus BetterBird's own
-# BunnyCDN mirror (identical listing verified 2026-09-03). The origin sits
-# on small shared hosting and intermittently fails from CI runners, so the
-# fetch falls over to the CDN.
-readonly BETTERBIRD_SOURCES=(
-  'https://www.betterbird.eu/downloads'
-  'https://betterbird-downloads.b-cdn.net'
-)
 
-install_betterbird() {
-  local listing files url ver base base2
-  listing=''
-  for base in "${BETTERBIRD_SOURCES[@]}"; do
-    if listing=$(curl -fsSL --proto '=https' --retry 3 --retry-all-errors --retry-delay 5 --retry-max-time 300 --connect-timeout 30 "${base}/" 2>/dev/null); then
-      break
-    fi
-    echo "BetterBird: listing fetch failed from ${base}; trying next source" >&2
-  done
-  [[ -n ${listing} ]] || die 'BetterBird: listing fetch failed from all sources'
-  # Current release of each ESR line first ("-latest-" marker), then every
-  # plain en-US x86_64 build. Exclude the Previous/ archive; highest
-  # version wins.
-  files=$(grep -oE 'LinuxArchive/betterbird-[^"]*-latest-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -v 'Previous/' | LC_ALL=C sort -V || true)
-  if [[ -z ${files} ]]; then
-    files=$(grep -oE 'LinuxArchive/betterbird-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -vE 'Previous/|-latest-' | LC_ALL=C sort -V || true)
-  fi
-  [[ -n ${files} ]] || die 'BetterBird: no x86_64 tarball found in the download listing'
-  base2=''
-  for base2 in "${BETTERBIRD_SOURCES[@]}"; do
-    [[ ${base2} != ${base} ]] && break
-  done
-  url="${base}/$(tail -n1 <<<"${files}")"
-  ver=$(basename "${url}" .en-US.linux-x86_64.tar.xz)
-  if ! curl -fsSL --proto '=https' --retry 3 --retry-all-errors --retry-delay 10 --retry-max-time 1800 --connect-timeout 30 --max-time 1500 -o /tmp/betterbird.tar.xz "${url}"; then
-    echo "BetterBird: tarball download failed from ${base}; retrying via ${base2}" >&2
-    curl -fsSL --proto '=https' --retry 3 --retry-all-errors --retry-delay 10 --retry-max-time 1800 --connect-timeout 30 --max-time 1500 -o /tmp/betterbird.tar.xz "${base2}/$(tail -n1 <<<"${files}")"
-  fi
-  rm -rf /opt/betterbird
-  tar -xJf /tmp/betterbird.tar.xz -C /opt
-  mv /opt/betterbird "/opt/${ver}"
-  ln -sfn "/opt/${ver}" /opt/betterbird
-  # /usr/local is a symlink to the writable /var/usrlocal in the image.
-  mkdir -p /usr/local/bin
-  ln -sfn "/opt/${ver}/betterbird" /usr/local/bin/betterbird
-  # Icon for the .desktop entry (shipped in system_files); the tarball has
-  # no desktop file of its own.
-  install -D -m 0644 "/opt/${ver}/chrome/icons/default/default256.png" \
-    /usr/share/icons/hicolor/256x256/apps/betterbird.png
-  install -D -m 0644 "/opt/${ver}/chrome/icons/default/default64.png" \
-    /usr/share/icons/hicolor/64x64/apps/betterbird.png
-  rm -f /tmp/betterbird.tar.xz
-  [[ -x "/opt/${ver}/betterbird" ]] || die "BetterBird ${ver}: binary missing after install"
-  echo "BetterBird ${ver} installed (latest x86_64 release)"
-}
-
-# BetterBird: latest x86_64 release pulled at compose time (function
-# above); desktop entry + icon ship in system_files.
-install_betterbird
 # KDE Connect LAN access: mdns discovery + 1714/tcp through firewalld.
 systemctl enable ryven-kdeconnect-firewall.service
 # PCI latency timers (CachyOS-style) at boot, before any GUI starts.
