@@ -848,6 +848,8 @@ check 'spell: hunspell-ar' rpm -q hunspell-ar
 check 'spell: aspell-en' rpm -q aspell-en
 check 'spell: gspell' rpm -q gspell
 check 'c-ares' rpm -q c-ares
+check 'dns: cloudflare dot drop-in' grep -q 'DNSOverTLS=yes' /etc/systemd/resolved.conf.d/ryven-dns.conf
+check 'dns: nm resolved backend' grep -q 'dns=systemd-resolved' /etc/NetworkManager/conf.d/ryven-dns.conf
 check 'darkly widgetStyle' grep -q 'widgetStyle=Darkly' /etc/xdg/kdeglobals
 check 'plasmalogin enabled' unit_enabled plasmalogin.service
 check 'sddm not enabled' bash -c 's=$(systemctl is-enabled sddm.service 2>/dev/null || true); [[ $s != enabled ]]'

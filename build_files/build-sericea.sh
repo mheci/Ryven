@@ -336,6 +336,8 @@ check 'screenshot-ocr helper' test -x /usr/local/bin/screenshot-ocr
 check 'kde-connect' rpm -q kde-connect
 check 'kdeconnect firewall' unit_enabled ryven-kdeconnect-firewall.service
 check 'gvfs-mtp' rpm -q gvfs-mtp
+check 'dns: cloudflare dot drop-in' grep -q 'DNSOverTLS=yes' /etc/systemd/resolved.conf.d/ryven-dns.conf
+check 'dns: nm resolved backend' grep -q 'dns=systemd-resolved' /etc/NetworkManager/conf.d/ryven-dns.conf
 check 'nvidia kargs' test -f /usr/lib/bootc/kargs.d/00-nvidia.toml
 check 'zswap kargs' test -f /usr/lib/bootc/kargs.d/10-zswap.toml
 check 'ffmpeg rpm' rpm -q ffmpeg

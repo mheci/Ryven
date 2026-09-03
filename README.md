@@ -62,6 +62,12 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
   gvfs-mtp + gvfs-smb + gvfs-gphoto2 (phone/camera + SMB file access).
 - **Spell check**: hunspell + aspell + gspell with `en`, `en-US`, `en-GB` (F44's full
   English set) and Arabic (`hunspell-ar`; F44 has no `aspell-ar`).
+- **DNS**: opportunistic DNS encryption OOTB with Cloudflare — systemd-resolved is the
+  NetworkManager DNS backend and Cloudflare (1.1.1.1 / 2606:4700:4700::1111 / family-2)
+  is preconfigured globally with `DNSOverTLS=yes`: local (DHCP) DNS still answers local
+  names first, everything else resolves via Cloudflare over TLS, and if the encrypted
+  path is blocked resolved falls back to plain for the same servers.
+- **c-ares** runtime for the agentic toolchain.
 
 ## Themes
 
