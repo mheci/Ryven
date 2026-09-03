@@ -154,8 +154,18 @@ systemctl disable sshd.service 2>/dev/null || true
 systemctl mask sshd.service 2>/dev/null || true
 
 copr_install_isolated vdanielmo/git-credential-manager git-credential-manager
+# mise (jdx) — mise.jdx.dev/installing-mise.html, dnf section (Fedora 41+):
+# the documented install is COPR jdxcode/mise, which tracks mise releases
+# (fresher than the official repo, which lags). The COPR file is deliberately
+# left enabled at rest so host `dnf upgrade` keeps mise current (scoped
+# deviation from the disabled-at-rest rule). System-wide auto self-update is
+# shipped via /etc/mise/config.toml (system_files), per the page's guidance
+# to keep the CLI on a recent version.
+dnf5 -y copr enable jdxcode/mise
 if ! dnf5 -y install mise; then
-  vendor_repo_install '*mise*.repo' https://mise.jdx.dev/rpm/mise.repo mise
+  # Fall back to the official Fedora repo in case it ever carries mise.
+  dnf5 -y copr disable jdxcode/mise
+  dnf5 -y install mise || die 'mise unavailable (COPR jdxcode/mise + official repo)'
 fi
 
 install_priority bun-bin
@@ -220,7 +230,7 @@ systemctl enable nohang.service
 # akmods build, so mainline razer_* drivers (in the CachyOS kernel) are the
 # device support; the daemon + python bindings work over them.
 install_priority falcond falcond-profiles
-install_priority vicinae lact
+install_priority vicinae lact superfile
 install_priority openrazer openrazer-daemon python3-openrazer
 systemctl enable falcond.service lactd.service
 if [[ -f /usr/lib/systemd/system/openrazer.service ]]; then
@@ -243,6 +253,10 @@ EOF
 # Template user profile (copy via `ujust falcond-profile name=<game-exe>`).
 install -D -m 0644 /usr/share/ryven/falcond/ryven-gaming-template.conf \
   /usr/share/falcond/profiles/user/ryven-gaming-template.conf
+# BetterBird: latest x86_64 release pulled at compose time (see
+# install_betterbird in common.sh); desktop entry + icon ship in
+# system_files.
+install_betterbird
 install_priority satty || copr_install_isolated nett00n/hyprland satty
 install_priority cliphist || copr_install_isolated nett00n/hyprland cliphist
 install_wl_clip_persist
@@ -410,6 +424,11 @@ check 'lactd enabled' unit_enabled lactd.service
 check 'openrazer userspace' command -v openrazerd
 check 'semanage' command -v semanage
 check 'power-profiles-daemon' rpm -q power-profiles-daemon
+check 'superfile (spf)' command -v spf
+check 'betterbird binary' test -x /opt/betterbird/betterbird
+check 'betterbird on PATH' command -v betterbird
+check 'betterbird desktop entry' test -f /usr/share/applications/betterbird.desktop
+check 'mise' command -v mise
 check 'nvidia kargs' test -f /usr/lib/bootc/kargs.d/00-nvidia.toml
 check 'zswap kargs' test -f /usr/lib/bootc/kargs.d/10-zswap.toml
 check 'ffmpeg rpm' rpm -q ffmpeg

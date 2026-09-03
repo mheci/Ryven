@@ -434,10 +434,18 @@ systemctl mask sshd.service 2>/dev/null || true
 # git-credential-manager is not in Fedora/Terra/Fusion; isolated COPR.
 copr_install_isolated vdanielmo/git-credential-manager git-credential-manager
 
-# mise (jdx) is not in Fedora 44. Try Fedora first in case that changes, then
-# the official RPM repo; disable the repo file after install.
+# mise (jdx) — mise.jdx.dev/installing-mise.html, dnf section (Fedora 41+):
+# the documented install is COPR jdxcode/mise, which tracks mise releases
+# (fresher than the official repo, which lags). The COPR file is deliberately
+# left enabled at rest so host `dnf upgrade` keeps mise current (scoped
+# deviation from the disabled-at-rest rule). System-wide auto self-update is
+# shipped via /etc/mise/config.toml (system_files), per the page's guidance
+# to keep the CLI on a recent version.
+dnf5 -y copr enable jdxcode/mise
 if ! dnf5 -y install mise; then
-  vendor_repo_install '*mise*.repo' https://mise.jdx.dev/rpm/mise.repo mise
+  # Fall back to the official Fedora repo in case it ever carries mise.
+  dnf5 -y copr disable jdxcode/mise
+  dnf5 -y install mise || die 'mise unavailable (COPR jdxcode/mise + official repo)'
 fi
 
 # bun-bin, deno (Terra rust-deno Name first), Zed stable (not nightly), mpv
@@ -569,7 +577,7 @@ systemctl enable nohang.service
 # akmods build, so mainline razer_* drivers (in the CachyOS kernel) are the
 # device support; the daemon + python bindings work over them.
 install_priority falcond falcond-profiles
-install_priority vicinae lact
+install_priority vicinae lact superfile
 install_priority openrazer openrazer-daemon python3-openrazer
 systemctl enable falcond.service lactd.service
 if [[ -f /usr/lib/systemd/system/openrazer.service ]]; then
@@ -592,6 +600,10 @@ EOF
 # Template user profile (copy via `ujust falcond-profile name=<game-exe>`).
 install -D -m 0644 /usr/share/ryven/falcond/ryven-gaming-template.conf \
   /usr/share/falcond/profiles/user/ryven-gaming-template.conf
+# BetterBird: latest x86_64 release pulled at compose time (see
+# install_betterbird in common.sh); desktop entry + icon ship in
+# system_files.
+install_betterbird
 # KDE Connect LAN access: mdns discovery + 1714/tcp through firewalld.
 systemctl enable ryven-kdeconnect-firewall.service
 # PCI latency timers (CachyOS-style) at boot, before any GUI starts.
@@ -923,6 +935,11 @@ check 'lactd enabled' unit_enabled lactd.service
 check 'openrazer userspace' command -v openrazerd
 check 'semanage' command -v semanage
 check 'power-profiles-daemon' rpm -q power-profiles-daemon
+check 'superfile (spf)' command -v spf
+check 'betterbird binary' test -x /opt/betterbird/betterbird
+check 'betterbird on PATH' command -v betterbird
+check 'betterbird desktop entry' test -f /usr/share/applications/betterbird.desktop
+check 'mise' command -v mise
 check 'darkly widgetStyle' grep -q 'widgetStyle=Darkly' /etc/xdg/kdeglobals
 check 'plasmalogin enabled' unit_enabled plasmalogin.service
 check 'sddm not enabled' bash -c 's=$(systemctl is-enabled sddm.service 2>/dev/null || true); [[ $s != enabled ]]'

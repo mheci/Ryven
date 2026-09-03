@@ -60,7 +60,15 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
   (ryven), portal-based agent on sericea via xdg-desktop-portal.
 - **KIO / GVFS**: ryven: kio-fuse + kio-extras + kio-gdrive; wl/sericea: gvfs +
   gvfs-mtp + gvfs-smb + gvfs-gphoto2 (phone/camera + SMB file access).
-- **yazi**: from Terra (not in Fedora 44 repos).
+- **yazi** and **superfile** (`spf`): terminal file managers, from Terra
+  (not in Fedora 44 repos).
+- **BetterBird** (Thunderbird fork): the **latest x86_64 release is pulled at
+  compose time** (weekly CI = always current on the published image), installed
+  to `/opt/betterbird` with a desktop entry; no Fedora package exists.
+- **mise**: installed from **COPR `jdxcode/mise`** (the documented dnf method
+  for Fedora 41+, tracks mise releases) with that repo left enabled at rest so
+  host `dnf upgrade` keeps it current, plus system-wide `auto_update = true` in
+  `/etc/mise/config.toml` (per mise.jdx.dev/installing-mise.html).
 - **`vm.max_map_count=2147483642`** (MAX_INT − 5, the SteamOS default per the
   Arch gaming wiki): `/etc/sysctl.d/90-ryven-max-map-count.conf`, survives bootc updates.
 - **Gaming performance** (Arch wiki `Gaming#Improving_performance`, all images):

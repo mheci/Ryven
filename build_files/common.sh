@@ -240,6 +240,46 @@ apply_selinux_game_booleans() {
   return 0
 }
 
+# ---------------------------------------------------------------------------
+# BetterBird (betterbird.eu) — Thunderbird fork. Not in any Fedora repo, so
+# the LATEST x86_64 release is pulled at compose time (weekly CI rebuilds =
+# always current on the published image). The official download site is an
+# auto-generated file listing; the current release of each ESR line carries
+# a "-latest-" marker, which we prefer. The project publishes no checksums
+# (verified 2026-09), so integrity rests on HTTPS from betterbird.eu; the
+# build fails closed on any download/extract error or missing binary.
+readonly BETTERBIRD_BASE='https://www.betterbird.eu/downloads'
+
+install_betterbird() {
+  local listing files url ver
+  listing=$(curl -fsSL --proto '=https' --retry 3 --retry-all-errors "${BETTERBIRD_BASE}/")
+  # Current release of each ESR line first ("-latest-" marker), then every
+  # plain en-US x86_64 build. Exclude the Previous/ archive; highest
+  # version wins.
+  files=$(grep -oE 'LinuxArchive/betterbird-[^"]*-latest-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -v 'Previous/' | LC_ALL=C sort -V || true)
+  if [[ -z ${files} ]]; then
+    files=$(grep -oE 'LinuxArchive/betterbird-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -vE 'Previous/|-latest-' | LC_ALL=C sort -V || true)
+  fi
+  [[ -n ${files} ]] || die 'BetterBird: no x86_64 tarball found in the download listing'
+  url="${BETTERBIRD_BASE}/$(tail -n1 <<<"${files}")"
+  ver=$(basename "${url}" .en-US.linux-x86_64.tar.xz)
+  curl -fsSL --proto '=https' --retry 3 --retry-all-errors -o /tmp/betterbird.tar.xz "${url}"
+  rm -rf /opt/betterbird
+  tar -xJf /tmp/betterbird.tar.xz -C /opt
+  mv /opt/betterbird "/opt/${ver}"
+  ln -sfn "/opt/${ver}" /opt/betterbird
+  ln -sfn "/opt/${ver}/betterbird" /usr/local/bin/betterbird
+  # Icon for the .desktop entry (shipped in system_files); the tarball has
+  # no desktop file of its own.
+  install -D -m 0644 "/opt/${ver}/chrome/icons/default/default256.png" \
+    /usr/share/icons/hicolor/256x256/apps/betterbird.png
+  install -D -m 0644 "/opt/${ver}/chrome/icons/default/default64.png" \
+    /usr/share/icons/hicolor/64x64/apps/betterbird.png
+  rm -f /tmp/betterbird.tar.xz
+  [[ -x "/opt/${ver}/betterbird" ]] || die "BetterBird ${ver}: binary missing after install"
+  echo "BetterBird ${ver} installed (latest x86_64 release)"
+}
+
 # wl-clip-persist is not in Fedora/Terra/Fusion (2026-09). RPM first, then
 # a pinned-commit cargo build into /usr/bin. Build-only toolchain packages
 # are removed again so they do not ship in the final image. Not curl|sh.
