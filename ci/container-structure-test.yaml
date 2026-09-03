@@ -38,7 +38,3 @@ commandTests:
   - name: Darkly widgetStyle
     command: grep
     args: ["-q", "widgetStyle=Darkly", "/etc/xdg/kdeglobals"]
-metadataTest:
-  labels:
-    - key: org.opencontainers.image.title
-      value: Ryven

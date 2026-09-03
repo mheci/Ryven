@@ -61,16 +61,8 @@
     },
     {
       "customType": "regex",
-      "description": "Goss release pin in build.yml",
-      "managerFilePatterns": ["/(^|/)\\.github/workflows/build\\.yml$/"],
-      "matchStrings": ["GOSS_VER: (?<currentValue>v[0-9.]+)"],
-      "datasourceTemplate": "github-releases",
-      "depNameTemplate": "goss-org/goss",
-    },
-    {
-      "customType": "regex",
-      "description": "container-structure-test release pin in build.yml",
-      "managerFilePatterns": ["/(^|/)\\.github/workflows/build\\.yml$/"],
+      "description": "container-structure-test release pin in image workflows",
+      "managerFilePatterns": ["/(^|/)\\.github/workflows/build-ryven.*\\.yml$/"],
       "matchStrings": ["CST_VER: (?<currentValue>v[0-9.]+)"],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "GoogleContainerTools/container-structure-test",
