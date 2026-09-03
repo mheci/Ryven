@@ -251,3 +251,66 @@ install_wl_clip_persist() {
   dnf5 -y remove rust cargo gcc wayland-devel libxkbcommon-devel pkgconf-pkg-config
   command -v wl-clip-persist >/dev/null || die 'wl-clip-persist build produced no binary'
 }
+
+# ---------------------------------------------------------------------------
+# oo7 — Rust implementation of the D-Bus Secret Service
+# (org.freedesktop.secrets); the wl/sericea images' keyring, replacing
+# gnome-keyring.
+#
+# Fedora 44's repos ship only oo7-cli 0.4.3 (no daemon, portal, or PAM
+# module), so the full stack is source-built at a pinned tag:
+#   /usr/bin/oo7-daemon            user-session daemon (auto_start below
+#                                  hardcodes this exact path)
+#   /usr/bin/oo7-cli               manual unlock/lock from the terminal
+#   /usr/bin/cargo-credential-oo7  cargo credential provider
+#   /usr/lib/security/pam_oo7.so   login auto-unlock + password sync
+#   /usr/lib/oo7-portal            XDG portal Secret backend
+# PAM wiring (auth/session/password lines) is added at first boot by the
+# ryven-keyring-pam oneshot; the user unit + generator in system_files keep
+# the daemon running per session. Build-only toolchain packages are removed
+# again so they do not ship in the final image.
+#
+# Source: https://github.com/linux-credentials/oo7
+readonly OO7_TAG='0.6.0'
+# Pinned tag commit; bump OO7_TAG and OO7_COMMIT together.
+readonly OO7_COMMIT='9070389f33bec2e47048384e2fdbd7aab64e0df7'
+
+install_oo7() {
+  if command -v oo7-daemon >/dev/null 2>&1 && [[ -e /usr/lib/security/pam_oo7.so ]]; then
+    return 0
+  fi
+  dnf5 -y install git rust cargo gcc pkgconf-pkg-config
+  rm -rf /tmp/oo7
+  git init -q /tmp/oo7
+  git -C /tmp/oo7 remote add origin https://github.com/linux-credentials/oo7
+  git -C /tmp/oo7 fetch --depth 1 origin "${OO7_COMMIT}"
+  git -C /tmp/oo7 checkout -q FETCH_HEAD
+  (
+    cd /tmp/oo7
+    CARGO_HOME=/tmp/oo7-cargo cargo build --release --locked \
+      -p oo7-daemon -p oo7-cli -p oo7-portal -p oo7-pam -p cargo-credential-oo7
+  )
+  install -D -m 0755 /tmp/oo7/target/release/oo7-daemon /usr/bin/oo7-daemon
+  install -D -m 0755 /tmp/oo7/target/release/oo7-cli /usr/bin/oo7-cli
+  install -D -m 0755 /tmp/oo7/target/release/cargo-credential-oo7 /usr/bin/cargo-credential-oo7
+  # Let the daemon mlock the keyring past the default 8 MiB rlimit. Best
+  # effort: an unprivileged compose container may lack CAP_SETFCAP, in which
+  # case the daemon runs with the plain rlimit.
+  setcap cap_ipc_lock=+ep /usr/bin/oo7-daemon 2>/dev/null || true
+  install -D -m 0755 /tmp/oo7/target/release/libpam_oo7.so /usr/lib/security/pam_oo7.so
+  install -D -m 0755 /tmp/oo7/target/release/oo7-portal /usr/lib/oo7-portal
+  # Upstream's .portal advertises UseIn=gnome only; ours targets the shells
+  # running on this image so the portal backend is selected without a
+  # portals.conf override.
+  install -D -m 0644 /dev/stdin /usr/share/xdg-desktop-portal/portals/oo7-portal.portal <<'EOF'
+[Portal]
+name=oo7
+description=Secret service portal (oo7)
+busname=org.freedesktop.impl.portal.Secret
+main-binary=/usr/lib/oo7-portal
+UseIn=hyprland,sway
+EOF
+  rm -rf /tmp/oo7 /tmp/oo7-cargo
+  dnf5 -y remove rust cargo gcc pkgconf-pkg-config
+  command -v oo7-daemon >/dev/null || die 'oo7 build produced no daemon'
+}

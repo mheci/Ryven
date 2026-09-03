@@ -1,0 +1,12 @@
+[Unit]
+Description=oo7 Secret Service keyring daemon
+Documentation=https://github.com/linux-credentials/oo7
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.secrets
+ExecStart=/usr/bin/oo7-daemon
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

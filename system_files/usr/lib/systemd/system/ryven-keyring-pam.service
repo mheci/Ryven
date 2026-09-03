@@ -1,0 +1,12 @@
+[Unit]
+Description=Ryven keyring PAM wiring (auto-unlock + password sync)
+After=local-fs.target
+Before=graphical-session-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/ryven-keyring-pam
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

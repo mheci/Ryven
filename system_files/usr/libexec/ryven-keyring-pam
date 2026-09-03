@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# First-boot keyring PAM wiring. Idempotent (exact-line grep guard) and
+# stamped, so re-runs are no-ops. Runs before the greeter can authenticate,
+# on every boot until the stamp exists.
+#
+# Ryven-WL / Ryven-Sericea (oo7 Secret Service keyring):
+#   auth+session pam_oo7.so (auto_start) in the greeter and TTY login PAM
+#   files unlock the keyring with the login password; the password module in
+#   /etc/pam.d/passwd keeps the login keyring following `passwd`.
+# Ryven (KDE Plasma):
+#   auth + session pam_kwallet5.so auto_start kwalletd=/usr/bin/ksecretd
+#   auto-unlock the default KDE Wallet with the login password (the wallet
+#   password must equal the user password — set it once at first use).
+#   kwallet-pam has no password module, so there is no password sync on KDE.
+#
+# Each branch is guarded by its PAM module file, so this script is inert on
+# images where no keyring PAM module is installed.
+set -euo pipefail
+
+STAMP=/var/lib/ryven/keyring-pam.stamp
+OO7_MODULE=/usr/lib/security/pam_oo7.so
+KWALLET_MODULE=/usr/lib64/security/pam_kwallet5.so
+
+OO7_AUTH='auth      optional                        pam_oo7.so'
+OO7_SESSION='session optional                        pam_oo7.so auto_start'
+OO7_PASSWORD='password optional                        pam_oo7.so'
+KW_AUTH='auth      optional                        pam_kwallet5.so'
+KW_SESSION='session optional                        pam_kwallet5.so auto_start kwalletd=/usr/bin/ksecretd'
+# TTY login (no display manager) needs force_run per the upstream docs.
+KW_AUTH_TTY='auth      optional                        pam_kwallet5.so force_run'
+KW_SESSION_TTY='session optional                        pam_kwallet5.so auto_start force_run kwalletd=/usr/bin/ksecretd'
+
+# Append $2 to $1 unless that exact line is already present. A pre-existing
+# differently-formatted line is tolerated: PAM module entries are additive
+# and the modules are idempotent.
+append_line() { # $1=file $2=line
+  local file=$1 line=$2
+  [ -f "$file" ] || return 0
+  if ! grep -qxF "$line" "$file"; then
+    printf '%s\n' "$line" >>"$file"
+  fi
+}
+
+if [[ -e ${OO7_MODULE} ]]; then
+  for f in /etc/pam.d/greetd /etc/pam.d/login; do
+    append_line "${f}" "${OO7_AUTH}"
+    append_line "${f}" "${OO7_SESSION}"
+  done
+  append_line /etc/pam.d/passwd "${OO7_PASSWORD}"
+fi
+
+if [[ -e ${KWALLET_MODULE} ]]; then
+  for f in /etc/pam.d/plasmalogin /etc/pam.d/sddm; do
+    append_line "${f}" "${KW_AUTH}"
+    append_line "${f}" "${KW_SESSION}"
+  done
+  append_line /etc/pam.d/login "${KW_AUTH_TTY}"
+  append_line /etc/pam.d/login "${KW_SESSION_TTY}"
+fi
+
+mkdir -p /var/lib/ryven
+touch "${STAMP}"

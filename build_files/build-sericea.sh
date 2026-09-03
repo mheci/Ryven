@@ -133,7 +133,7 @@ dnf5 -y install \
   nm-connection-editor network-manager-applet \
   blueman brightnessctl playerctl pavucontrol \
   thunar thunar-volman gvfs gvfs-mtp gvfs-gphoto2 \
-  gnome-keyring polkit \
+  libsecret polkit \
   google-noto-sans-fonts rsms-inter-fonts jetbrains-mono-fonts \
   fontawesome-fonts
 
@@ -203,11 +203,16 @@ install_priority \
 install_priority satty || copr_install_isolated nett00n/hyprland satty
 install_priority cliphist || copr_install_isolated nett00n/hyprland cliphist
 install_wl_clip_persist
+# oo7 replaces gnome-keyring as the Secret Service keyring (see common.sh).
+install_oo7
 install_priority greetd
 install_any tuigreet greetd-tuigreet
 
 getent passwd greeter >/dev/null || useradd -r -s /usr/bin/nologin greeter
 systemctl enable greetd.service
+# First-boot PAM wiring: pam_oo7.so auto-unlock at greetd + keyring password
+# sync in /etc/pam.d/passwd (guarded, idempotent, stamped).
+systemctl enable ryven-keyring-pam.service
 if [[ -f /usr/lib/systemd/system/sddm.service ]]; then
   systemctl disable sddm.service || true
   systemctl mask sddm.service || true
@@ -307,6 +312,15 @@ check 'wl-clipboard' rpm -q wl-clipboard
 check 'dunst' rpm -q dunst
 check 'wl-clip-persist' command -v wl-clip-persist
 check 'greetd enabled' unit_enabled greetd.service
+check 'oo7 daemon' test -x /usr/bin/oo7-daemon
+check 'oo7 cli' command -v oo7-cli
+check 'oo7 cargo credential' command -v cargo-credential-oo7
+check 'oo7 pam module' test -f /usr/lib/security/pam_oo7.so
+check 'oo7 portal' test -f /usr/share/xdg-desktop-portal/portals/oo7-portal.portal
+check 'oo7 user unit' test -f /usr/lib/systemd/user/oo7-daemon.service
+check 'oo7 user generator' test -x /usr/lib/systemd/user-generators/ryven-user-units
+check 'keyring pam oneshot' unit_enabled ryven-keyring-pam.service
+check 'no gnome-keyring' bash -c '! rpm -q gnome-keyring >/dev/null 2>&1'
 check 'nvidia kargs' test -f /usr/lib/bootc/kargs.d/00-nvidia.toml
 check 'zswap kargs' test -f /usr/lib/bootc/kargs.d/10-zswap.toml
 check 'ffmpeg rpm' rpm -q ffmpeg

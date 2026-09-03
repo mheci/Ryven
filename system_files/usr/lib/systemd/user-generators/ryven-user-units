@@ -1,0 +1,29 @@
+#!/bin/sh
+# Enable per-user systemd units at the user's first session.
+#
+# composefs builds have no user session, so `systemctl --user enable` cannot
+# run at build time; this user-generator creates the default.target.wants
+# symlinks systemd expects instead. Runs at every session start; `ln -sfn`
+# makes it idempotent. Each rule is guarded so the generator is inert on
+# images that do not ship the corresponding daemon.
+#
+#  - oo7-daemon.service           (wl/sericea images; Secret Service keyring;
+#                                  only linked when the daemon binary exists)
+#  - plasma-kwallet-pam.service   (ryven image; shipped by the pam-kwallet
+#                                  package, enables KDE Wallet PAM helper)
+
+wants="${SYSTEMD_USER_UNIT_PATH:-${XDG_RUNTIME_DIR:-/tmp}/systemd/user}/default.target.wants"
+mkdir -p "$wants"
+
+link_unit() { # $1 = unit file name under /usr/lib/systemd/user
+  [ -f "/usr/lib/systemd/user/$1" ] || return 0
+  ln -sfn "/usr/lib/systemd/user/$1" "${wants}/$1" 2>/dev/null || true
+}
+
+# The oo7 unit file ships in system_files/ on every image, so it must not be
+# enabled where the daemon itself is absent (ryven/KDE image).
+if [ -x /usr/bin/oo7-daemon ]; then
+  link_unit oo7-daemon.service
+fi
+link_unit plasma-kwallet-pam.service
+exit 0

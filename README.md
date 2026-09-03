@@ -57,6 +57,23 @@ KDE ships both as color schemes (+ konsole profiles); wl/sericea ship navy as th
 `ujust theme name=dusk` — KDE applies the scheme live; wl/sericea write the token read by the
 shell on restart.
 
+## Secrets & keyring
+
+- **ryven-wl / ryven-sericea — oo7** replaces gnome-keyring as the D-Bus Secret Service
+  (`org.freedesktop.secrets`). Fedora 44 repos ship only `oo7-cli` (no daemon/PAM), so the
+  full stack is source-built at compose from a pinned tag: `oo7-daemon` (per-session,
+  D-Bus-activated user unit), `oo7-cli`, `cargo-credential-oo7`, the `pam_oo7.so` PAM module,
+  and `oo7-portal` (XDG portal backend, `UseIn=hyprland,sway`).
+- **Auto-unlock + password sync** (all images, first-boot oneshot, stamped + idempotent):
+  the login password unlocks the keyring at the greeter, and on wl/sericea the login keyring
+  follows `passwd` (`/etc/pam.d/passwd` picks up `password optional pam_oo7.so`). On KDE the
+  same oneshot wires `pam-kwallet` (`pam_kwallet5.so`, `kwalletd=/usr/bin/ksecretd`) to
+  auto-unlock the default KDE Wallet — its password must equal the user password, set once at
+  first use; kwallet-pam has no password module, so there is no KDE password sync.
+- Manual control on wl/sericea: `oo7-cli unlock -s`, `oo7-cli lock`. Cargo: add
+  `global-credential-providers = ["cargo-credential-oo7"]` to `~/.config/cargo/config.toml`
+  (git already uses `git-credential-libsecret` against the Secret Service).
+
 ## Not in the image
 
 CUDA, Docker/VMs, `terra-release-nvidia`, mesa-freeworld swap, cardwire, v4l2loopback, `curl | sh`.

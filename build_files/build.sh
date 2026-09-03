@@ -531,6 +531,18 @@ if [[ -f /usr/lib/systemd/system/sddm.service ]]; then
   systemctl mask sddm.service || true
 fi
 
+# KDE Wallet: kf6-kwallet ships the wallet daemon (kwalletd6) and ksecretd,
+# the Secret Service provider (org.freedesktop.secrets) that git-credential-
+# libsecret and the portal talk to. pam-kwallet auto-unlocks the default
+# wallet (kdewallet, blowfish, password = user password) with the login
+# password. The PAM lines are added at first boot by the ryven-keyring-pam
+# oneshot; the plasma-kwallet-pam user unit is enabled by the ryven-user-units
+# generator (compose has no user session, so `systemctl --user enable` cannot
+# run here).
+install_priority kf6-kwallet
+install_priority pam-kwallet
+systemctl enable ryven-keyring-pam.service
+
 # Enable every greenboot/redboot unit shipped by the RPMs, including
 # redboot-auto-reboot (native greenboot; do not drop it). Fail if none found.
 enabled=0
@@ -805,6 +817,10 @@ check 'theme tokens' test -f /usr/share/ryven/themes/navy.json
 check 'ryven wallpaper' test -f /usr/share/wallpapers/Ryven/contents/images/3840x2160.png
 check 'ryven kdeglobals' grep -q 'LookAndFeelPackage=org.ryven.desktop' /etc/xdg/kdeglobals
 check 'inter font default' grep -q 'font=Inter,' /etc/xdg/kdeglobals
+check 'kde wallet (ksecretd)' command -v ksecretd
+check 'pam-kwallet rpm' rpm -q pam-kwallet
+check 'pam-kwallet module' test -f /usr/lib64/security/pam_kwallet5.so
+check 'keyring pam oneshot' unit_enabled ryven-keyring-pam.service
 check 'darkly widgetStyle' grep -q 'widgetStyle=Darkly' /etc/xdg/kdeglobals
 check 'plasmalogin enabled' unit_enabled plasmalogin.service
 check 'sddm not enabled' bash -c 's=$(systemctl is-enabled sddm.service 2>/dev/null || true); [[ $s != enabled ]]'
