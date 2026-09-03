@@ -1,98 +1,98 @@
 [Background]
-Color=13,27,42
+Color=34,34,59
 
 [BackgroundFaint]
-Color=10,20,32
+Color=26,26,44
 
 [BackgroundIntense]
-Color=27,38,59
+Color=74,78,105
 
 [Color0]
-Color=13,27,42
+Color=34,34,59
 
 [Color0Faint]
-Color=13,27,42
+Color=34,34,59
 
 [Color0Intense]
-Color=122,130,138
+Color=133,133,147
 
 [Color1]
-Color=217,138,138
+Color=217,138,149
 
 [Color1Faint]
-Color=105,77,85
+Color=116,81,100
 
 [Color1Intense]
-Color=230,179,179
+Color=230,179,186
 
 [Color2]
-Color=132,201,163
+Color=159,196,168
 
 [Color2Faint]
-Color=67,105,96
+Color=90,107,108
 
 [Color2Intense]
-Color=175,220,195
+Color=193,217,198
 
 [Color3]
-Color=212,184,120
+Color=217,181,140
 
 [Color3Faint]
-Color=103,98,77
+Color=116,100,95
 
 [Color3Intense]
-Color=227,209,167
+Color=230,207,180
 
 [Color4]
-Color=119,141,169
+Color=125,134,201
 
 [Color4Faint]
-Color=61,78,99
+Color=75,79,123
 
 [Color4Intense]
-Color=167,181,199
+Color=170,176,220
 
 [Color5]
-Color=160,138,217
+Color=201,138,168
 
 [Color5Faint]
-Color=79,77,121
+Color=109,81,108
 
 [Color5Intense]
-Color=193,179,230
+Color=220,179,198
 
 [Color6]
-Color=127,179,201
+Color=138,169,201
 
 [Color6Faint]
-Color=64,95,114
+Color=81,95,123
 
 [Color6Intense]
-Color=172,206,220
+Color=179,199,220
 
 [Color7]
-Color=224,225,221
+Color=242,233,228
 
 [Color7Faint]
-Color=108,116,123
+Color=128,124,135
 
 [Color7Intense]
-Color=235,236,233
+Color=247,241,237
 
 [Foreground]
-Color=224,225,221
+Color=242,233,228
 
 [ForegroundFaint]
-Color=129,136,140
+Color=148,143,152
 
 [ForegroundIntense]
-Color=227,228,224
+Color=243,235,231
 
 [General]
 Anchor=0.5,0.5
 Blur=false
 ColorRandomization=false
-Description=Ryven
+Description=Ryven Dusk
 FillStyle=Tile
 Opacity=1
 Wallpaper=

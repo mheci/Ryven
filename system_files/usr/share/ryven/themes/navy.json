@@ -1,0 +1,37 @@
+{
+  "id": "navy",
+  "name": "Ryven Navy",
+  "kde_scheme": "Ryven",
+  "source": "https://coolors.co/palette/0d1b2a-1b263b-415a77-778da9-e0e1dd",
+  "palette": [
+    "0d1b2a",
+    "1b263b",
+    "415a77",
+    "778da9",
+    "e0e1dd"
+  ],
+  "tokens": {
+    "bg0": "0d1b2a",
+    "bg1": "1b263b",
+    "bg2": "415a77",
+    "accent": "778da9",
+    "fg": "e0e1dd",
+    "negative": "d98a8a",
+    "neutral": "d4b878",
+    "positive": "84c9a3",
+    "window_bg": "0d1b2a",
+    "window_bg_alt": "1b263b",
+    "view_bg": "#0b1724",
+    "view_alt": "#142032",
+    "btn_bg": "1b263b",
+    "btn_hover": "#2e4059",
+    "selection": "415a77",
+    "selection_alt": "#697c90",
+    "tooltip_bg": "#162235",
+    "fg_dim": "#81888c",
+    "fg_bright": "#e4e5e1",
+    "active_text": "#9caabb",
+    "link": "#91a2b6",
+    "visited": "#52657d"
+  }
+}

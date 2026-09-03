@@ -46,6 +46,17 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
 
 `ujust`: `secure-boot-enroll`, `tpm-luks-unlock`, `scx-select`. Reboot only with `reboot=1`.
 
+## Themes
+
+- **Ryven** (default): deep navy/slate — coolors `0d1b2a-1b263b-415a77-778da9-e0e1dd`.
+- **Ryven Dusk**: warm indigo/mauve — coolors `22223b-4a4e69-9a8c98-c9ada7-f2e9e4`.
+
+KDE ships both as color schemes (+ konsole profiles); wl/sericea ship navy as the default
+(hyprland borders, hyprlock, QuickShell panel, dunst / swaylock). Token source of truth:
+`/usr/share/ryven/themes/{navy,dusk}.json`. Switch: `ujust theme` (lists) /
+`ujust theme name=dusk` — KDE applies the scheme live; wl/sericea write the token read by the
+shell on restart.
+
 ## Not in the image
 
 CUDA, Docker/VMs, `terra-release-nvidia`, mesa-freeworld swap, cardwire, v4l2loopback, `curl | sh`.

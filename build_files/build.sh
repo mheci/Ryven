@@ -799,6 +799,9 @@ check 'zram generator disabled' bash -c '! systemctl is-enabled systemd-zram-set
 check 'no firefox flatpak' bash -c '! command -v flatpak >/dev/null || ! flatpak info --system org.mozilla.firefox >/dev/null 2>&1'
 check 'ryven look-and-feel' test -f /usr/share/plasma/look-and-feel/org.ryven.desktop/metadata.json
 check 'ryven color scheme' test -f /usr/share/color-schemes/Ryven.colors
+check 'ryven dusk color scheme' test -f '/usr/share/color-schemes/Ryven Dusk.colors'
+check 'ryven konsole scheme' test -f /usr/share/konsole/Ryven.colorscheme
+check 'theme tokens' test -f /usr/share/ryven/themes/navy.json
 check 'ryven wallpaper' test -f /usr/share/wallpapers/Ryven/contents/images/3840x2160.png
 check 'ryven kdeglobals' grep -q 'LookAndFeelPackage=org.ryven.desktop' /etc/xdg/kdeglobals
 check 'inter font default' grep -q 'font=Inter,' /etc/xdg/kdeglobals

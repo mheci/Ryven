@@ -97,3 +97,53 @@ scx-select scheduler="" start="0":
       echo "Not starting a scheduler (start=0). A bad sched-ext can panic the host."
     fi
     echo "Not rebooting."
+
+[group('theme')]
+theme name="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    if [[ -z "{{ name }}" ]]; then
+      echo "Available Ryven themes (tokens in /usr/share/ryven/themes/):"
+      for f in /usr/share/ryven/themes/*.json; do
+        echo "  $(basename "${f}" .json)"
+      done
+      echo "Usage: ujust theme name=navy|dusk"
+      exit 0
+    fi
+    case "{{ name }}" in
+      navy) scheme="Ryven" ;;
+      dusk) scheme="Ryven Dusk" ;;
+      *) echo "Unknown theme '${{ name }}' (available: navy, dusk)" >&2; exit 1 ;;
+    esac
+    # Persistent token; the wl/sericea shell and future consumers read this.
+    mkdir -p /var/lib/ryven
+    echo "{{ name }}" >/var/lib/ryven/theme
+    echo "Theme '${{ name}}' token written to /var/lib/ryven/theme."
+    # Plasma 6 ships kwriteconfig6; kwriteconfig5 is the legacy name (fallback chain).
+    wc=""
+    if command -v kwriteconfig5 >/dev/null 2>&1; then wc=kwriteconfig5;
+    elif command -v kwriteconfig6 >/dev/null 2>&1; then wc=kwriteconfig6; fi
+    case "${XDG_CURRENT_DESKTOP:-}" in
+      *KDE*)
+        if [[ -n ${wc} ]]; then
+          "${wc}" --file kdeglobals --group General --key ColorScheme "${scheme}"
+          echo "KDE color scheme set to '${scheme}'. New components pick it up; log out/in to restyle the whole session."
+        else
+          echo "No kwriteconfig5/6 found; set ColorScheme via System Settings manually." >&2
+        fi
+        ;;
+      Hyprland|Sway*)
+        if command -v quickshell >/dev/null 2>&1; then
+          quickshell ipc -c ryven call shell theme "{{ name }}" 2>/dev/null \
+            && echo "Shell theme applied live." || true
+        fi
+        echo "The wl/sericea shell reads the token on restart (systemctl --user restart ryven-shell once the shell service lands)."
+        ;;
+      *)
+        if [[ -n ${wc} ]]; then
+          "${wc}" --file kdeglobals --group General --key ColorScheme "${scheme}"
+          echo "KDE color scheme set to '${scheme}'."
+        fi
+        ;;
+    esac
+    echo "Not rebooting."

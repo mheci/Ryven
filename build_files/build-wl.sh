@@ -361,6 +361,10 @@ check 'quickshell rpm' rpm -q quickshell
 check 'hyprland.conf' test -f /usr/share/hypr/hyprland.conf
 check 'master layout' grep -q 'layout = master' /usr/share/hypr/hyprland.conf
 check 'tearing' grep -q 'allow_tearing = true' /usr/share/hypr/hyprland.conf
+check 'navy borders' grep -q 'col.active_border = rgba(778da9ee)' /usr/share/hypr/hyprland.conf
+check 'hyprlock theme' grep -q 'text-color = e0e1dd' /usr/share/hypr/hyprlock.conf
+check 'dunst theme' test -f /etc/skel/.config/dunst/dunst.conf
+check 'theme tokens' test -f /usr/share/ryven/themes/navy.json
 check 'no LIBVA_DRIVER_NAME=nvidia' bash -c '! grep -rE "^[[:space:]]*LIBVA_DRIVER_NAME=nvidia" /usr/share/hypr /usr/lib/environment.d /etc/xdg/uwsm 2>/dev/null'
 check 'cliphist' rpm -q cliphist
 check 'wl-clipboard' rpm -q wl-clipboard
