@@ -81,6 +81,14 @@ rpm -q kernel-cachyos-lto-core >/dev/null ||
 KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | LC_ALL=C sort -V | tail -n1)
 [[ -n "${KVER}" ]] || die 'cannot determine installed CachyOS kernel version'
 
+# The base image ships /lib/modules leftovers (the distro kernel dir,
+# contents already stripped) and can carry the build host's kernel
+# (Azure runners: 7.0.0-XXXX-azure). The image boots only the CachyOS
+# LTO kernel, and stray kernel dirs break any DKMS scriptlet that
+# autoinstalls for every kernel it finds (this took down the final
+# refresh upgrade via openrazer-kernel-modules-dkms). Keep only ${KVER}.
+find /lib/modules -mindepth 1 -maxdepth 1 ! -name "${KVER}" -exec rm -rf {} +
+
 # NVIDIA driver stack from Negativo17 + kernel module built for the
 # CachyOS kernel via their akmod-nvidia (no prebuilt modules exist for it;
 # see build.sh for the full package-by-package rationale). The LTO kernel
@@ -472,7 +480,12 @@ rm -rf /tmp/proton-cachyos
 # Runs after all installs so it also upgrades anything installed earlier
 # in this layer. The floating :44 base-image tag already tracks the
 # current ublue F44 build; this closes the gap to today's Fedora updates.
-dnf5 -y --refresh upgrade
+# --exclude: Terra's openrazer pulls in openrazer-kernel-modules-dkms as
+# a weak dep on refresh; its %posttrans runs `dkms autoinstall` over
+# every kernel dir it finds and the redundant DKMS build duplicates the
+# akmod modules. The image builds kmods via akmods only, so the DKMS
+# variant is excluded from the transaction.
+dnf5 -y --refresh upgrade --exclude openrazer-kernel-modules-dkms
 
 fail=0
 check() {
