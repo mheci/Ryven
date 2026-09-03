@@ -144,7 +144,10 @@ if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .
   tail -n 40 /var/log/akmod/*.log 2>/dev/null || true
   die "akmods produced no nvidia.ko for ${KVER}"
 fi
-dnf5 -y remove gcc make clang llvm
+# NOTE: the build toolchain (gcc/make/clang/llvm/lld) is kept until the
+# openrazer kmod recovery further down: the Terra openrazer transaction can
+# swap the akmods package, requiring one more akmods rebuild. The toolchain
+# is removed there, right after the last kmod build.
 
 # SELinux for gaming: Proton/Wine JIT + out-of-tree module loads.
 # semanage boolean -m --on (policy default) with setsebool -P fallback.
@@ -306,6 +309,24 @@ systemctl enable falcond.service lactd.service
 if [[ -f /usr/lib/systemd/system/openrazer.service ]]; then
   systemctl enable openrazer.service
 fi
+# The Terra openrazer transaction may swap the akmods package (different
+# repo build), overwriting the patched /usr/sbin/akmods-ostree-post; its
+# %post kmod build then fails with 'Not to be used as root' (non-critical
+# scriptlet error, the packages still install). Re-apply the fix and
+# rebuild if the openrazer kmod is missing.
+fix_akmods_ostree_post
+if have_rpm akmod-openrazer; then
+  if ! find "/usr/lib/modules/${KVER}" -name 'openrazer*.ko*' -print -quit | grep -q .; then
+    CC=clang LD=ld.lld KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" akmods --force --kernels "${KVER}"
+  fi
+  find "/usr/lib/modules/${KVER}" -name 'openrazer*.ko*' -print -quit | grep -q . || {
+    echo '--- akmods log (last 40 lines) ---' >&2
+    tail -n 40 /var/log/akmod/*.log 2>/dev/null || true
+    die "akmods produced no openrazer.ko for ${KVER}"
+  }
+fi
+# Last kmod build done - drop the build toolchain from the image.
+dnf5 -y remove gcc make clang llvm lld
 # falcond OOTB config (README: config.conf is generated on first run, but
 # may be packaged — we package it). scx_sched=none: scx_loader owns the
 # boot-time scheduler (scx_lavd --performance); per-game profiles still

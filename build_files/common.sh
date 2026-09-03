@@ -307,7 +307,7 @@ readonly BETTERBIRD_BASE='https://www.betterbird.eu/downloads'
 
 install_betterbird() {
   local listing files url ver
-  listing=$(curl -fsSL --proto '=https' --retry 3 --retry-all-errors "${BETTERBIRD_BASE}/")
+  listing=$(curl -fsSL --proto '=https' --retry 5 --retry-all-errors --retry-delay 10 --retry-max-time 600 --connect-timeout 30 "${BETTERBIRD_BASE}/")
   # Current release of each ESR line first ("-latest-" marker), then every
   # plain en-US x86_64 build. Exclude the Previous/ archive; highest
   # version wins.
@@ -318,7 +318,7 @@ install_betterbird() {
   [[ -n ${files} ]] || die 'BetterBird: no x86_64 tarball found in the download listing'
   url="${BETTERBIRD_BASE}/$(tail -n1 <<<"${files}")"
   ver=$(basename "${url}" .en-US.linux-x86_64.tar.xz)
-  curl -fsSL --proto '=https' --retry 3 --retry-all-errors -o /tmp/betterbird.tar.xz "${url}"
+  curl -fsSL --proto '=https' --retry 5 --retry-all-errors --retry-delay 10 --retry-max-time 3600 --connect-timeout 30 --max-time 3300 -o /tmp/betterbird.tar.xz "${url}"
   rm -rf /opt/betterbird
   tar -xJf /tmp/betterbird.tar.xz -C /opt
   mv /opt/betterbird "/opt/${ver}"
