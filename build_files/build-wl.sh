@@ -23,7 +23,7 @@ dnf5 -y install \
 # Terra bootstrap retried: Terra publishes metadata non-atomically and
 # mirrors can serve stale repomd files, so a fresh repomd can reference
 # files that 404, or fail its checksum, until the publish settles.
-for terra_attempt in 1 2 3 4 5; do
+for terra_attempt in 1 2 3 4 5 6; do
   if dnf5 -y install --nogpgcheck \
     --repofrompath "terra,https://repos.fyralabs.com/terra${FEDORA_RELEASE}" \
     terra-release && \
@@ -33,9 +33,9 @@ for terra_attempt in 1 2 3 4 5; do
       terra-release-multimedia; then
     break
   fi
-  [[ ${terra_attempt} -lt 5 ]] || die 'Terra bootstrap failed after 5 attempts'
-  dnf5 clean expire-cache --repoid=terra 2>/dev/null || dnf5 clean all
-  sleep 30
+  [[ ${terra_attempt} -lt 6 ]] || die 'Terra bootstrap failed after 6 attempts'
+  dnf5 clean metadata 2>/dev/null || dnf5 clean all
+  sleep 60
 done
 disable_yum_repos /etc/yum.repos.d/rpmfusion*.repo /etc/yum.repos.d/*terra*.repo
 
