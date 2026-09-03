@@ -363,7 +363,11 @@ install_wl_clip_persist() {
   install -D -m 0755 /tmp/wl-clip-persist/target/release/wl-clip-persist \
     /usr/bin/wl-clip-persist
   rm -rf /tmp/wl-clip-persist /tmp/cargo
-  dnf5 -y remove rust cargo gcc wayland-devel libxkbcommon-devel pkgconf-pkg-config
+  # Keep pkgconf-pkg-config: it is a system dependency (kmod requires
+  # /usr/bin/pkg-config; kmod is pulled in by the protected systemd-udev),
+  # so removing it breaks the transaction even though the build only used
+  # it as a -devel dependency.
+  dnf5 -y remove rust cargo gcc wayland-devel libxkbcommon-devel
   command -v wl-clip-persist >/dev/null || die 'wl-clip-persist build produced no binary'
 }
 
@@ -426,6 +430,7 @@ main-binary=/usr/lib/oo7-portal
 UseIn=hyprland,sway
 EOF
   rm -rf /tmp/oo7 /tmp/oo7-cargo
-  dnf5 -y remove rust cargo gcc pkgconf-pkg-config
+  # Keep pkgconf-pkg-config (system dependency of kmod; see above).
+  dnf5 -y remove rust cargo gcc
   command -v oo7-daemon >/dev/null || die 'oo7 build produced no daemon'
 }
