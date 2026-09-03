@@ -11,6 +11,13 @@ readonly FEDORA_RELEASE=44
 # extras subrepo from terra-release-extras (%package extras), not a product.
 readonly -a TERRA_REPOS=(terra terra-extras terra-multimedia terra-mesa)
 readonly -a FUSION_REPOS=(rpmfusion-free rpmfusion-free-updates rpmfusion-nonfree rpmfusion-nonfree-updates)
+# Repos excluded from NVIDIA driver transactions. Negativo17's
+# fedora-multimedia repo (enabled on the base image) ships same-version
+# driver packages under different names (nvidia-driver-common) that
+# file-conflict with the RPMFusion xorg-x11-drv-nvidia set, so the driver
+# stack resolves strictly from RPMFusion (+Fedora). Base defaults elsewhere
+# are left untouched.
+readonly -a NVIDIA_EXCLUDE_REPOS=(--disablerepo=fedora-multimedia '--disablerepo=*negativo*')
 # CachyOS kernel for Fedora: LLVM-ThinLTO flavor (COPR
 # bieszczaders/kernel-cachyos-lto, BORE scheduler). Weekly rebuilds track the
 # COPR tip; COPR offers no digest pins, so the tag is intentionally floating

@@ -16,9 +16,18 @@ dnf5 -y install \
   "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-${FEDORA_RELEASE}.noarch.rpm" \
   "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${FEDORA_RELEASE}.noarch.rpm"
 
-dnf5 -y install --nogpgcheck \
-  --repofrompath "terra,https://repos.fyralabs.com/terra${FEDORA_RELEASE}" \
-  terra-release
+# Terra bootstrap retried: Terra publishes metadata non-atomically, so a
+# fresh repomd can reference files that 404 until the publish settles.
+for terra_attempt in 1 2 3 4 5; do
+  if dnf5 -y install --nogpgcheck \
+    --repofrompath "terra,https://repos.fyralabs.com/terra${FEDORA_RELEASE}" \
+    terra-release; then
+    break
+  fi
+  [[ ${terra_attempt} -lt 5 ]] || die 'terra-release bootstrap failed after 5 attempts'
+  dnf5 clean expire-cache --repoid=terra 2>/dev/null || dnf5 clean all
+  sleep 30
+done
 dnf5 -y install --enablerepo=terra \
   terra-release-extras \
   terra-release-mesa \
@@ -47,7 +56,7 @@ KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | L
 # (no prebuilt modules exist for it; see build.sh for the full rationale).
 # The LTO kernel tree is clang-built, so clang/llvm join the build deps.
 dnf5 -y install gcc make clang llvm
-dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" \
+dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" \
   akmod-nvidia \
   xorg-x11-drv-nvidia xorg-x11-drv-nvidia-libs \
   xorg-x11-drv-nvidia-libs.i686 \
@@ -95,14 +104,14 @@ kargs = [
 EOF
 
 dnf5 -y install \
-  "${FUSION_REPOS[@]/#/--enablerepo=}" \
+  "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" \
   --exclude='cuda*' \
   --exclude='*nvidia*cuda*' \
   libva-nvidia-driver.x86_64 \
   libva-nvidia-driver.i686
 install_priority vulkan-loader.x86_64 vulkan-loader.i686 vulkan-tools egl-wayland
 if ! have_rpm nvidia-settings; then
-  dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" --exclude='cuda*' nvidia-settings
+  dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" --exclude='cuda*' nvidia-settings
 fi
 
 dnf5 -y install \

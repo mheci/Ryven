@@ -34,6 +34,13 @@ readonly FEDORA_RELEASE=44
 # extras subrepo from terra-release-extras (%package extras), not a product.
 readonly -a TERRA_REPOS=(terra terra-extras terra-multimedia terra-mesa)
 readonly -a FUSION_REPOS=(rpmfusion-free rpmfusion-free-updates rpmfusion-nonfree rpmfusion-nonfree-updates)
+# Repos excluded from NVIDIA driver transactions. Negativo17's
+# fedora-multimedia repo (enabled on the base image) ships same-version
+# driver packages under different names (nvidia-driver-common) that
+# file-conflict with the RPMFusion xorg-x11-drv-nvidia set, so the driver
+# stack resolves strictly from RPMFusion (+Fedora). Base defaults elsewhere
+# are left untouched.
+readonly -a NVIDIA_EXCLUDE_REPOS=(--disablerepo=fedora-multimedia '--disablerepo=*negativo*')
 # CachyOS kernel for Fedora: LLVM-ThinLTO flavor (COPR
 # bieszczaders/kernel-cachyos-lto, BORE scheduler). Weekly rebuilds track the
 # COPR tip; COPR offers no digest pins, so the tag is intentionally floating
@@ -230,12 +237,19 @@ dnf5 -y install \
   "https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-${FEDORA_RELEASE}.noarch.rpm"
 
 # Terra bootstrap: --nogpgcheck + --repofrompath only until terra-release
-# lands (it ships the FyraLabs signing keys and terra.repo). Then install
-# extras/mesa/multimedia subpackages from the now-signed terra repo.
-# Do not install terra-release-nvidia.
-dnf5 -y install --nogpgcheck \
-  --repofrompath "terra,https://repos.fyralabs.com/terra${FEDORA_RELEASE}" \
-  terra-release
+# lands (it ships the FyraLabs signing keys and terra.repo). Retried because
+# Terra publishes metadata non-atomically: a fresh repomd can reference files
+# that 404 until the publish settles.
+for terra_attempt in 1 2 3 4 5; do
+  if dnf5 -y install --nogpgcheck \
+    --repofrompath "terra,https://repos.fyralabs.com/terra${FEDORA_RELEASE}" \
+    terra-release; then
+    break
+  fi
+  [[ ${terra_attempt} -lt 5 ]] || die 'terra-release bootstrap failed after 5 attempts'
+  dnf5 clean expire-cache --repoid=terra 2>/dev/null || dnf5 clean all
+  sleep 30
+done
 dnf5 -y install --enablerepo=terra \
   terra-release-extras \
   terra-release-mesa \
@@ -305,7 +319,7 @@ KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | L
 # Secure Boot hosts must enroll their own MOK and sign it, or disable
 # Secure Boot.
 dnf5 -y install gcc make clang llvm
-dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" \
+dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" \
   akmod-nvidia \
   xorg-x11-drv-nvidia xorg-x11-drv-nvidia-libs \
   xorg-x11-drv-nvidia-libs.i686 \
@@ -363,14 +377,14 @@ EOF
 # vulkan-loader both ISAs from the priority ladder. nvidia-settings from
 # Fusion if the akmod path did not already provide it.
 dnf5 -y install \
-  "${FUSION_REPOS[@]/#/--enablerepo=}" \
+  "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" \
   --exclude='cuda*' \
   --exclude='*nvidia*cuda*' \
   libva-nvidia-driver.x86_64 \
   libva-nvidia-driver.i686
 install_priority vulkan-loader.x86_64 vulkan-loader.i686 vulkan-tools
 if ! have_rpm nvidia-settings; then
-  dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" --exclude='cuda*' nvidia-settings
+  dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${NVIDIA_EXCLUDE_REPOS[@]}" --exclude='cuda*' nvidia-settings
 fi
 
 # Base OS: just (ujust), Secure Boot tooling, LUKS/TPM unlock, chrony (not
