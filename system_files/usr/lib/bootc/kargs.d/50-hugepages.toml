@@ -1,0 +1,9 @@
+# Reserve a 2 GiB pool (1024 x 2 MiB) of 2 MiB hugepages for Proton.
+# With THP=always (ryven-gaming-response-time.conf) and this preallocated
+# pool, MAP_HUGETLB-backed game allocations succeed without on-demand
+# faults or allocation stalls.
+kargs = [
+  "default_hugepagesz=2M",
+  "hugepagesz=2M",
+  "hugepages=1024",
+]

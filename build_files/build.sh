@@ -410,6 +410,7 @@ dnf5 -y install \
   hunspell hunspell-en hunspell-en-US hunspell-en-GB hunspell-ar \
   aspell aspell-en gspell c-ares \
   tesseract tesseract-langpack-eng tesseract-langpack-ara \
+  pciutils \
   # KDE minimum floor: device pairing on LAN, KIO virtual filesystems,
   # the Plasma 6 polkit agent (package is 'polkit-kde' on F44).
   kde-connect kio-fuse kio-extras kio-gdrive polkit-kde
@@ -561,6 +562,8 @@ install_priority nohang
 systemctl enable nohang.service
 # KDE Connect LAN access: mdns discovery + 1714/tcp through firewalld.
 systemctl enable ryven-kdeconnect-firewall.service
+# PCI latency timers (CachyOS-style) at boot, before any GUI starts.
+systemctl enable ryven-pci-latency.service
 
 # Enable every greenboot/redboot unit shipped by the RPMs, including
 # redboot-auto-reboot (native greenboot; do not drop it). Fail if none found.
@@ -860,6 +863,17 @@ check 'yazi' command -v yazi
 check 'dns: cloudflare dot drop-in' grep -q 'DNSOverTLS=yes' /etc/systemd/resolved.conf.d/ryven-dns.conf
 check 'dns: nm resolved backend' grep -q 'dns=systemd-resolved' /etc/NetworkManager/conf.d/ryven-dns.conf
 check 'vm.max_map_count sysctl' grep -q 'vm.max_map_count = 2147483642' /etc/sysctl.d/90-ryven-max-map-count.conf
+# Arch wiki Gaming -> Improving performance (integrated)
+check 'tsc kargs' grep -q 'clocksource=tsc' /usr/lib/bootc/kargs.d/40-tsc-clocksource.toml
+check 'gaming tmpfiles' test -f /etc/tmpfiles.d/ryven-gaming-response-time.conf
+check 'thp always (proton)' grep -q 'transparent_hugepage/enabled - - - - always' /etc/tmpfiles.d/ryven-gaming-response-time.conf
+check 'hugepages kargs' grep -q 'hugepages=1024' /usr/lib/bootc/kargs.d/50-hugepages.toml
+check 'qdisc sysctl' grep -q 'fq_codel' /etc/sysctl.d/91-ryven-buffer-bloat.conf
+check 'bbr sysctl' grep -q 'net.ipv4.tcp_congestion_control = bbr' /etc/sysctl.d/92-ryven-bbr.conf
+check 'bbr in kernel' bash -c 'find /lib/modules -name "tcp_bbr*" -print -quit | grep -q . || grep -lq "^CONFIG_TCP_CONG_BBR=y" /boot/config-* 2>/dev/null'
+check 'drirc vblank' grep -q 'vblank_mode' /etc/drirc
+check 'pci latency oneshot' unit_enabled ryven-pci-latency.service
+check 'setpci' command -v setpci
 check 'nohang rpm' rpm -q nohang
 check 'nohang enabled' unit_enabled nohang.service
 check 'nohang conf' test -f /etc/nohang/nohang.conf

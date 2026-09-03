@@ -1,0 +1,8 @@
+# Faster clock_gettime for games (Arch wiki Gaming -> Improve clock_gettime
+# throughput): use the TSC instead of hpet/acpi_pm. Safe on these images:
+# every CPU that can run them is x86_64_v3, which has an invariant (reliable)
+# TSC — forcing TSC on unreliable hardware would break CLOCK_MONOTONIC.
+kargs = [
+  "tsc=reliable",
+  "clocksource=tsc",
+]

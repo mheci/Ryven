@@ -55,6 +55,17 @@ tpm-luks-unlock:
     echo "Not rebooting."
 
 [group('performance')]
+# Launch a game with the wiki's latency recommendations (Gaming -> Load
+# shared objects immediately + Nice levels). LD_BIND_NOW is per invocation
+# on purpose: the wiki warns against setting it globally.
+game cmd="" nice="-4":
+    #!/usr/bin/bash
+    set -euo pipefail
+    [[ -n "{{ cmd }}" ]] || { echo "Usage: ujust game cmd='steam' [nice=-4]"; exit 1; }
+    export LD_BIND_NOW=1
+    exec nice -n "{{ nice }}" bash -c "{{ cmd }}"
+
+[group('performance')]
 scx-select scheduler="" start="0":
     #!/usr/bin/bash
     set -euo pipefail

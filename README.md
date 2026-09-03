@@ -63,6 +63,30 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
 - **yazi**: from Terra (not in Fedora 44 repos).
 - **`vm.max_map_count=2147483642`** (MAX_INT − 5, the SteamOS default per the
   Arch gaming wiki): `/etc/sysctl.d/90-ryven-max-map-count.conf`, survives bootc updates.
+- **Gaming performance** (Arch wiki `Gaming#Improving_performance`, all images):
+  - `tsc=reliable clocksource=tsc` kernel args (x86_64_v3 ⇒ invariant TSC, so safe)
+  - response-time sysctl/sysfs set via `/etc/tmpfiles.d/ryven-gaming-response-time.conf`
+    (proactive compaction off, watermark boost 1, 1 GiB min_free_kbytes, watermark
+    scale 500, swappiness 10, MGLRU=5, zone reclaim off, page_lock_unfairness 1,
+    CFS slice/migration tuning — inert under scx_lavd, active on the CFS fallback)
+  - **Huge pages on for Proton**: THP `always` (enabled/shmem/defrag) — the
+    wiki's "never" is deliberately overridden for Proton max performance — plus a
+    reserved 2 GiB pool (1024 × 2 MiB, `kargs.d/50-hugepages.toml`) so game
+    MAP_HUGETLB allocations hit preallocated pages
+  - **BBR** congestion control (`net.ipv4.tcp_congestion_control=bbr`, loads
+    tcp_bbr) for downloads/updates/streaming on high-BDP links, paired with the
+    fair-queue qdisc BBR is designed to run beside
+  - `net.core.default_qdisc=fq_codel` (network buffer bloat)
+  - CachyOS-style PCI latency timers at boot (`ryven-pci-latency.service`,
+    20 cycles all devices / 0 root bridge / 80 audio)
+  - `/etc/drirc` `vblank_mode=0` (DRI input latency; inert for the NVIDIA driver)
+  - `ujust game cmd='steam' [nice=-4]`: runs a game with `LD_BIND_NOW=1` + nice −4
+    (per-invocation on purpose — the wiki warns against a global `LD_BIND_NOW`)
+  - already in the image: scx_lavd `--performance` (the wiki-recommended scheduler),
+    zswap on / zram off, BFQ for HDD storage (NVMe stays on the documented kyber)
+  - not applicable from the section: SMT (BIOS-level; the wiki says disable there),
+    ACO (AMD-only, these images are NVIDIA), schedtoold (AUR-only; scx_lavd
+    already prioritizes game tasks)
 - **Spell check**: hunspell + aspell + gspell with `en`, `en-US`, `en-GB` (F44's full
   English set) and Arabic (`hunspell-ar`; F44 has no `aspell-ar`).
 - **DNS**: opportunistic DNS encryption OOTB with Cloudflare — systemd-resolved is the
