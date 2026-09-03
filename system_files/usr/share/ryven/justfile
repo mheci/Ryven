@@ -14,7 +14,9 @@ secure-boot-enroll reboot="0":
       fi
     done
     if [[ -z $CERT ]]; then
-      echo "No MOK certificate found. NVIDIA/akmods DER is not on this image." >&2
+      echo "No MOK certificate found on this image." >&2
+      echo "Ryven ships an unsigned CachyOS kernel: keep Secure Boot disabled" >&2
+      echo "unless you sign the kernel and modules with your own MOK." >&2
       exit 1
     fi
     echo "Importing ${CERT} into MOK. Confirm in the firmware blue screen after reboot."
@@ -77,12 +79,16 @@ scx-select scheduler="" start="0":
       exec sudo /usr/bin/ujust scx-select scheduler="{{ scheduler }}" start="{{ start }}"
     fi
     mkdir -p /etc/default
-    printf 'SCX_SCHEDULER=%s\n' "${WANT}" >/etc/default/scx
-    echo "Wrote /etc/default/scx with ${WANT}."
+    if [[ -f /etc/default/scx ]] && grep -q '^SCX_SCHEDULER=' /etc/default/scx; then
+      sed -i "s/^SCX_SCHEDULER=.*/SCX_SCHEDULER=${WANT}/" /etc/default/scx
+    else
+      printf 'SCX_SCHEDULER=%s\nSCX_FLAGS=--performance\n' "${WANT}" >>/etc/default/scx
+    fi
+    echo "Wrote /etc/default/scx with ${WANT} (flags preserved)."
     if [[ "{{ start }}" == "1" ]]; then
-      if systemctl list-unit-files scx.service >/dev/null 2>&1; then
+      if [[ -f /usr/lib/systemd/system/scx.service || -f /etc/systemd/system/scx.service ]]; then
         systemctl enable --now scx.service || systemctl restart scx.service
-      elif systemctl list-unit-files scx-loader.service >/dev/null 2>&1; then
+      elif [[ -f /usr/lib/systemd/system/scx-loader.service || -f /etc/systemd/system/scx-loader.service ]]; then
         systemctl enable --now scx-loader.service || true
       else
         echo "No scx systemd unit. Start manually: ${WANT}"

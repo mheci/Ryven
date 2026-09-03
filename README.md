@@ -5,14 +5,14 @@
 <h1 align="center">Ryven</h1>
 
 <p align="center">
-  Fedora 44 Kinoite desktop — NVIDIA open, Terra multimedia, CachyOS-inspired frame times.
+  Fedora 44 Kinoite desktop — CachyOS LTO kernel, NVIDIA open, Terra multimedia.
 </p>
 
-`ghcr.io/mheci/ryven:latest` on `ghcr.io/ublue-os/kinoite-main` (Fedora **44** KDE). Plasma Login Manager (`plasmalogin`), not SDDM.
+`ghcr.io/mheci/ryven:latest` on `ghcr.io/ublue-os/kinoite-main` (Fedora **44** KDE). Plasma Login Manager (`plasmalogin`), not SDDM. Kernel: CachyOS LLVM-ThinLTO (`kernel-cachyos-lto`, BORE scheduler) from COPR.
 
-`ghcr.io/mheci/ryven-wl:latest` on `ghcr.io/ublue-os/base-main` (no DE). **Hyprland** + **QuickShell**, greetd/tuigreet + UWSM. Latest Hyprland stack from COPR `nett00n/hyprland` at compose time. Master layout, tearing + `preferred` (max res/refresh) on all monitors. Clipboard: wl-clipboard, cliphist, wl-clip-persist. Notifications: dunst. Portals: xdg-desktop-portal-hyprland. Screenshots: grim/slurp/satty/hyprshot. Phone: KDE Connect. NVIDIA: `NVD_BACKEND=direct`, GBM nvidia-drm — not `LIBVA_DRIVER_NAME=nvidia`.
+`ghcr.io/mheci/ryven-wl:latest` on `ghcr.io/ublue-os/base-main` (no DE). **Hyprland** + **QuickShell**, greetd/tuigreet + UWSM. Latest Hyprland stack from COPR `nett00n/hyprland` at compose time. Master layout, tearing + `preferred` (max res/refresh) on all monitors. Clipboard: wl-clipboard, cliphist, wl-clip-persist. Notifications: dunst. Portals: xdg-desktop-portal-hyprland. Screenshots: grim/slurp/satty/hyprshot. Phone: KDE Connect. NVIDIA: `NVD_BACKEND=direct`, GBM nvidia-drm — not `LIBVA_DRIVER_NAME=nvidia`. Kernel: CachyOS LLVM-ThinLTO, same as ryven.
 
-`ghcr.io/mheci/ryven-sericea:latest` on `ghcr.io/ublue-os/base-main` + **Sway** (ublue `sericea-main` is deprecated). Same NVIDIA/gaming/agent stack. Tearing + preferred outputs, dunst, cliphist, wl-clip-persist (built from source if no RPM), KDE Connect, xdg-desktop-portal-wlr, greetd. GPU: ublue `akmods` / `akmods-extra` / `akmods-nvidia-open` (`ogc-44`) plus OGC `kernel-packages-fedora:latest-fc44`. **zswap on**, **zram off**. ISO is weekly after the scheduled OCI build.
+`ghcr.io/mheci/ryven-sericea:latest` on `ghcr.io/ublue-os/base-main` + **Sway** (ublue `sericea-main` is deprecated). Same NVIDIA/gaming/agent stack. Tearing + preferred outputs, dunst, cliphist, wl-clip-persist (built from source if no RPM), KDE Connect, xdg-desktop-portal-wlr, greetd. Kernel: CachyOS LLVM-ThinLTO; NVIDIA module compiled from RPMFusion `akmod-nvidia` at image build time. **zswap on**, **zram off**. ISO is weekly after the scheduled OCI build.
 
 ## Switch
 
@@ -25,13 +25,19 @@ sudo bootc upgrade          # stage only — do not pass --apply
 
 Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled image. Hosts never auto-reboot on updates. greenboot `redboot-auto-reboot` stays enabled when the unit exists.
 
+## Hardware notes
+
+- CPU: the CachyOS kernel requires **x86_64_v3**. x86_64_v2 machines cannot boot these images.
+- Secure Boot: the CachyOS kernel and the locally compiled NVIDIA module are **unsigned**. Keep Secure Boot **disabled**, or sign the kernel and modules with your own Machine Owner Key and enroll it. `ujust secure-boot-enroll` only enrolls the Universal Blue key, which alone is no longer sufficient.
+- NVIDIA: kernel module is compiled from RPMFusion `akmod-nvidia` at image build time; no prebuilt NVIDIA modules ship (per CachyOS COPR policy).
+
 ## Desktop and games
 
 - NVIDIA VA-API: `libva-nvidia-driver` x86_64 + i686 (`NVD_BACKEND=direct`)
 - 10 GiB shader caches
 - Steam RPM, **proton-cachyos** (SLR), NTSync 0666, Proton Wayland + HDR
 - `terra-gamescope`, ScopeBuddy (`scb`), MangoHud, Heroic, ProtonPlus, Helium, GPU Screen Recorder, Polychromatic
-- **scx-scheds** + **scx-tools** / `scx_loader` with lavd `--performance`
+- **scx-scheds** + **scx-tools** / `scx_loader` with lavd `--performance`, plus **scx-manager** GUI (CachyOS addons COPR)
 - **bpftune-gaming** and **ananicy-cpp** + CachyOS rules
 - beesd@UUID on host btrfs, NVMe kyber / HDD bfq
 - **mpv**, Terra ffmpeg, **t3code**, **zed**, ghostty-tip

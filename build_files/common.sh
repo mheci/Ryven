@@ -1,16 +1,21 @@
 #!/bin/bash
 # Shared compose helpers for Ryven and Ryven-WL. Sourced, not executed.
-# Callers must already have set -ouex pipefail or inherit it here.
+# Callers must already have set -euxo pipefail or inherit it here.
 
 # Fedora major used in Fusion/Terra URL paths. Bump Fusion, Terra, and the
 # Containerfile FROM together when leaving 44.
 readonly FEDORA_RELEASE=44
-# Comma list for dnf5 --enablerepo. terra-extras is the extras subrepo from
-# terra-release-extras (%package extras), not a separate product.
-readonly TERRA_REPOS='terra,terra-extras,terra-multimedia,terra-mesa'
-readonly FUSION_REPOS='rpmfusion-free,rpmfusion-free-updates,rpmfusion-nonfree,rpmfusion-nonfree-updates'
-# Open Gaming Collective kernel RPM OCI (skopeo dir copy). Tag tracks fc44.
-readonly OGC_IMAGE='ghcr.io/opengamingcollective/kernel-packages-fedora:latest-fc44'
+# Repo ID lists for dnf5 --enablerepo. One flag per repo: dnf5 does not accept
+# a comma-separated list in a single --enablerepo flag, so callers must expand
+# these arrays as "${TERRA_REPOS[@]/#/--enablerepo=}". terra-extras is the
+# extras subrepo from terra-release-extras (%package extras), not a product.
+readonly -a TERRA_REPOS=(terra terra-extras terra-multimedia terra-mesa)
+readonly -a FUSION_REPOS=(rpmfusion-free rpmfusion-free-updates rpmfusion-nonfree rpmfusion-nonfree-updates)
+# CachyOS kernel for Fedora: LLVM-ThinLTO flavor (COPR
+# bieszczaders/kernel-cachyos-lto, BORE scheduler). Weekly rebuilds track the
+# COPR tip; COPR offers no digest pins, so the tag is intentionally floating
+# and the compose fails closed on install errors.
+readonly CACHYOS_COPR='bieszczaders/kernel-cachyos-lto'
 # CachyOS Proton Steam Linux Runtime build. Asset names on GitHub omit .tar.xz
 # from the .sha512sum filename; keep both strings in lockstep when bumping.
 readonly PROTON_CACHYOS_VER='11.0-20260703-slr'
@@ -31,14 +36,20 @@ have_rpm() {
 
 # Leave yum/dnf repo files on disk (needed for later --enablerepo) but force
 # enabled=0 so a booted host does not pull from Terra/Fusion/vendor by default.
-# Globs are expanded by the caller or via nullglob inside; missing files skip.
+# Accepts literal paths or globs; non-matches are skipped via local nullglob.
 disable_yum_repos() {
   local repo
+  local nullglob_was_off=0
+  shopt -q nullglob || nullglob_was_off=1
   shopt -s nullglob
   for repo in "$@"; do
     [[ -f ${repo} ]] || continue
-    sed -i 's/^enabled=1/enabled=0/' "${repo}"
+    sed -i -E 's/^[[:space:]]*enabled[[:space:]]*=[[:space:]]*1([[:space:]]|$)/enabled=0\1/' "${repo}"
   done
+  if ((nullglob_was_off)); then
+    shopt -u nullglob
+  fi
+  return 0
 }
 
 # install_priority [--official-repo=ID] PKG...
@@ -61,10 +72,10 @@ install_priority() {
     if ((${#official[@]})) && dnf5 -y install "${official[@]}" "${pkg}"; then
       continue
     fi
-    if dnf5 -y install --enablerepo="${TERRA_REPOS}" "${pkg}"; then
+    if dnf5 -y install "${TERRA_REPOS[@]/#/--enablerepo=}" "${pkg}"; then
       continue
     fi
-    if dnf5 -y install --enablerepo="${FUSION_REPOS}" "${pkg}"; then
+    if dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" "${pkg}"; then
       continue
     fi
     if dnf5 -y install "${pkg}"; then
@@ -97,10 +108,10 @@ swap_ffmpeg_priority() {
     return 0
   fi
   if have_rpm ffmpeg-free; then
-    if dnf5 -y swap --enablerepo="${TERRA_REPOS}" --allowerasing ffmpeg-free ffmpeg; then
+    if dnf5 -y swap "${TERRA_REPOS[@]/#/--enablerepo=}" --allowerasing ffmpeg-free ffmpeg; then
       return 0
     fi
-    if dnf5 -y swap --enablerepo="${FUSION_REPOS}" --allowerasing ffmpeg-free ffmpeg; then
+    if dnf5 -y swap "${FUSION_REPOS[@]/#/--enablerepo=}" --allowerasing ffmpeg-free ffmpeg; then
       return 0
     fi
   fi
@@ -109,114 +120,106 @@ swap_ffmpeg_priority() {
 
 # Enable a COPR, install listed packages, immediately disable the COPR repo
 # file. The packages stay in rpmdb; later dnf on the host will not use COPR
-# unless an admin re-enables it. Fail hard if enable or install fails.
+# unless an admin re-enables it. The repo is disabled even when the install
+# fails, so a failed compose never leaves the COPR enabled.
 copr_install_isolated() {
   local copr=$1
   shift
+  local rc=0
   dnf5 -y copr enable "${copr}"
-  dnf5 -y install "$@"
-  dnf5 -y copr disable "${copr}"
+  dnf5 -y install "$@" || rc=$?
+  dnf5 -y copr disable "${copr}" || true
+  return "${rc}"
 }
 
 # Add a vendor .repo from URL (overwrite if compose is re-run), install the
 # remaining argv packages, then disable matching repo files so they are not
-# default-on. glob is a basename glob under /etc/yum.repos.d (unquoted so
-# the shell can expand *mise*.repo / *razer*.repo).
+# default-on. glob is a basename glob under /etc/yum.repos.d; it is expanded
+# locally with nullglob so a non-match disables nothing instead of passing a
+# literal pattern on.
 vendor_repo_install() {
   local glob=$1
   local url=$2
   shift 2
+  local rc=0
+  local -a matches=()
+  local nullglob_was_off=0
+  shopt -q nullglob || nullglob_was_off=1
+  shopt -s nullglob
   dnf5 -y config-manager addrepo --overwrite --from-repofile="${url}"
-  dnf5 -y install "$@"
-  disable_yum_repos /etc/yum.repos.d/${glob}
+  dnf5 -y install "$@" || rc=$?
+  matches=(/etc/yum.repos.d/"${glob}")
+  if ((nullglob_was_off)); then
+    shopt -u nullglob
+  fi
+  if ((${#matches[@]})); then
+    disable_yum_repos "${matches[@]}"
+  fi
+  return "${rc}"
 }
 
 # Replace rpm-ostree/dracut kernel-install plugins with `exit 0` so dnf can
 # replace kernel-core in an unbooted container. Restored after depmod.
+# Runs in a subshell so the caller working directory is unchanged even on
+# failure; pair with a trap on restore (see callers).
 stub_kernel_install_hooks() {
   local f
   [[ -d /usr/lib/kernel/install.d ]] || return 0
-  pushd /usr/lib/kernel/install.d >/dev/null
-  for f in "${KERNEL_INSTALL_STUBS[@]}"; do
-    if [[ -e ${f} ]]; then
-      mv "${f}" "${f}.bak"
-      printf '%s\n' '#!/bin/sh' 'exit 0' >"${f}"
-      chmod +x "${f}"
-    fi
-  done
-  popd >/dev/null
+  (
+    cd /usr/lib/kernel/install.d || exit 1
+    for f in "${KERNEL_INSTALL_STUBS[@]}"; do
+      if [[ -e ${f} ]]; then
+        mv "${f}" "${f}.bak"
+        printf '%s\n' '#!/bin/sh' 'exit 0' >"${f}"
+        chmod +x "${f}"
+      fi
+    done
+  )
 }
 
 restore_kernel_install_hooks() {
   local f
   [[ -d /usr/lib/kernel/install.d ]] || return 0
-  pushd /usr/lib/kernel/install.d >/dev/null
-  for f in "${KERNEL_INSTALL_STUBS[@]}"; do
-    if [[ -e ${f}.bak ]]; then
-      mv -f "${f}.bak" "${f}"
-    fi
-  done
-  popd >/dev/null
+  (
+    cd /usr/lib/kernel/install.d || exit 1
+    for f in "${KERNEL_INSTALL_STUBS[@]}"; do
+      if [[ -e ${f}.bak ]]; then
+        mv -f "${f}.bak" "${f}"
+      fi
+    done
+  )
 }
 
-# Install prebuilt kmod-* and *-kmod-common RPMs with rpm --nodeps (dep chain
-# is the OGC kernel we just installed, not Fedora's). Skip akmod-* : those
-# expect a %post compile as root on a booted system and would leave no .ko.
-# Empty match is a warning, not a hard fail (optional extra kmods).
-install_kmod_bundle() {
-  local -a rpms=()
-  local f
-  for f in "$@"; do
-    [[ -f ${f} ]] || continue
-    [[ ${f##*/} == akmod-* ]] && continue
-    rpms+=("${f}")
-  done
-  if ((${#rpms[@]} == 0)); then
-    echo "No matching prebuilt kmod RPMs for: $*" >&2
-    return 0
+# Install the CachyOS kernel set from COPR over the Fedora kernel set.
+# Base set (kernel-cachyos + devel-matched) is fatal; modules-extra and the
+# unmatched devel are best-effort so a renamed subpackage cannot fail the
+# whole compose. The COPR is disabled again before returning, even when the
+# install fails. Requires stubbed kernel-install hooks in this unbooted tree.
+install_cachyos_kernel() {
+  local rc=0
+  dnf5 -y copr enable "${CACHYOS_COPR}"
+  dnf5 -y install kernel-cachyos-lto kernel-cachyos-lto-devel-matched || rc=$?
+  if ((rc == 0)); then
+    dnf5 -y install kernel-cachyos-lto-modules-extra || \
+      echo 'kernel-cachyos-lto-modules-extra unavailable; continuing without it' >&2
+    dnf5 -y install kernel-cachyos-lto-devel || \
+      echo 'kernel-cachyos-lto-devel unavailable; continuing without it' >&2
   fi
-  rpm --install --nodeps "${rpms[@]}"
-}
-
-# Copy the OGC kernel OCI to a dir transport, then extract only kernel* RPM
-# layers. OCI layers may be tar or raw RPM blobs; title annotation is the
-# filename. Exclude kernel-headers / unrelated packages via the title regex.
-extract_ogc_kernel() {
-  local dest=$1
-  local manifest=/tmp/ogc-oci/manifest.json
-  local layer title digest blob
-  mkdir -p "${dest}" /tmp/ogc-oci
-  skopeo copy --retry-times 3 "docker://${OGC_IMAGE}" dir:/tmp/ogc-oci
-  [[ -f ${manifest} ]] || {
-    ls -la /tmp/ogc-oci >&2
-    die 'OGC kernel OCI manifest missing'
-  }
-  while read -r layer; do
-    title=$(jq -r '.annotations["org.opencontainers.image.title"] // empty' <<<"${layer}")
-    digest=$(jq -r '.digest' <<<"${layer}")
-    [[ -n ${title} && -n ${digest} ]] || continue
-    if ! grep -qE '^(kernel-[0-9]|kernel-core-|kernel-devel-|kernel-devel-matched-|kernel-modules-|kernel-modules-core-|kernel-modules-extra-|kernel-tools)' <<<"${title}"; then
-      continue
-    fi
-    blob=/tmp/ogc-oci/${digest#sha256:}
-    [[ -f ${blob} ]] || die "OGC blob missing for ${title} (${digest})"
-    echo "OGC kernel RPM: ${title}"
-    if tar tf "${blob}" >/dev/null 2>&1; then
-      tar xf "${blob}" -C "${dest}"
-    else
-      cp -a "${blob}" "${dest}/${title}"
-    fi
-  done < <(jq -c '.layers[]' "${manifest}")
+  dnf5 -y copr disable "${CACHYOS_COPR}" || true
+  return "${rc}"
 }
 
 # systemctl is-enabled prints enabled|disabled|masked|static|…. Compare to
 # the string enabled. Missing units are not enabled.
 unit_enabled() {
-  [[ $(systemctl is-enabled "$1" 2>/dev/null || true) == enabled ]]
+  [[ "$(systemctl is-enabled "$1" 2>/dev/null || true)" == "enabled" ]]
 }
 
 # wl-clip-persist is not in Fedora/Terra/Fusion (2026-09). RPM first, then
-# cargo --locked from the upstream tag into /usr/bin. Not curl|sh.
+# a pinned-commit cargo build into /usr/bin. Build-only toolchain packages
+# are removed again so they do not ship in the final image. Not curl|sh.
+# Pinned upstream commit (tag v0.5.0); bump together with the fetch below.
+readonly WL_CLIP_PERSIST_SHA='e26fde01c13922e3a65049dafb7d5adfbc52626e'
 install_wl_clip_persist() {
   if command -v wl-clip-persist >/dev/null 2>&1; then
     return 0
@@ -224,10 +227,12 @@ install_wl_clip_persist() {
   if install_priority wl-clip-persist; then
     return 0
   fi
-  dnf5 -y install rust cargo gcc git wayland-devel libxkbcommon-devel pkgconf-pkg-config
-  mkdir -p /tmp/wl-clip-persist
-  git clone --depth 1 --branch v0.5.0 \
-    https://github.com/Linus789/wl-clip-persist.git /tmp/wl-clip-persist
+  dnf5 -y install rust cargo gcc wayland-devel libxkbcommon-devel pkgconf-pkg-config
+  rm -rf /tmp/wl-clip-persist
+  git init -q /tmp/wl-clip-persist
+  git -C /tmp/wl-clip-persist remote add origin https://github.com/Linus789/wl-clip-persist.git
+  git -C /tmp/wl-clip-persist fetch --depth 1 origin "${WL_CLIP_PERSIST_SHA}"
+  git -C /tmp/wl-clip-persist checkout -q FETCH_HEAD
   (
     cd /tmp/wl-clip-persist
     CARGO_HOME=/tmp/cargo cargo build --release --locked
@@ -235,5 +240,6 @@ install_wl_clip_persist() {
   install -D -m 0755 /tmp/wl-clip-persist/target/release/wl-clip-persist \
     /usr/bin/wl-clip-persist
   rm -rf /tmp/wl-clip-persist /tmp/cargo
+  dnf5 -y remove rust cargo gcc wayland-devel libxkbcommon-devel pkgconf-pkg-config
   command -v wl-clip-persist >/dev/null || die 'wl-clip-persist build produced no binary'
 }

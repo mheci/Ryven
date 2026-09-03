@@ -3,9 +3,9 @@
 # sericea-main is deprecated/unpublished).
 # Same product rules as Ryven/WL: no terra-release-nvidia, no mesa-freeworld
 # swap, no CUDA, no Docker, no LIBVA_DRIVER_NAME=nvidia, zswap on / zram off,
-# OGC kernel + ublue akmods-nvidia-open:ogc-44.
+# CachyOS kernel (COPR) + RPMFusion akmod-nvidia built at compose time.
 
-set -ouex pipefail
+set -euxo pipefail
 # shellcheck source=/dev/null
 source /ctx/common.sh
 
@@ -26,65 +26,45 @@ dnf5 -y install --enablerepo=terra \
 disable_yum_repos /etc/yum.repos.d/rpmfusion*.repo /etc/yum.repos.d/*terra*.repo
 
 stub_kernel_install_hooks
-dnf5 -y install jq skopeo
-extract_ogc_kernel /tmp/kernel-rpms
-compgen -G '/tmp/kernel-rpms/kernel-core-*.rpm' >/dev/null ||
-  die 'OGC kernel-core RPM missing under /tmp/kernel-rpms'
+trap restore_kernel_install_hooks ERR
+dnf5 -y install jq
+install_cachyos_kernel
+rpm -q kernel-cachyos-lto-core >/dev/null ||
+  die 'kernel-cachyos-lto-core missing after COPR install'
 
 local_pkg=
-for local_pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra kernel-tools kernel-tools-libs; do
+for local_pkg in kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra; do
   if have_rpm "${local_pkg}"; then
     rpm --erase "${local_pkg}" --nodeps
   fi
 done
 rm -rf /usr/lib/modules/*
 
-dnf5 -y install \
-  /tmp/kernel-rpms/kernel-[0-9]*.rpm \
-  /tmp/kernel-rpms/kernel-core-*.rpm \
-  /tmp/kernel-rpms/kernel-modules-*.rpm \
-  /tmp/kernel-rpms/kernel-devel-*.rpm
+KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | LC_ALL=C sort -V | tail -n1)
+[[ -n "${KVER}" ]] || die 'cannot determine installed CachyOS kernel version'
 
-KVER=$(rpm -q kernel-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | sort -V | tail -n1)
+# NVIDIA kernel modules built for the CachyOS kernel via RPMFusion akmod
+# (no prebuilt modules exist for it; see build.sh for the full rationale).
+# The LTO kernel tree is clang-built, so clang/llvm join the build deps.
+dnf5 -y install gcc make clang llvm
+dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" \
+  akmod-nvidia \
+  xorg-x11-drv-nvidia xorg-x11-drv-nvidia-libs \
+  xorg-x11-drv-nvidia-libs.i686 \
+  xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-cuda-libs \
+  xorg-x11-drv-nvidia-cuda-libs.i686
+akmods --force --kernels "${KVER}"
+find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q . ||
+  die "akmods produced no nvidia.ko for ${KVER}"
+dnf5 -y remove gcc make clang llvm
 
-if [[ -f /etc/yum.repos.d/_copr_ublue-os-akmods.repo ]]; then
-  sed -i 's@enabled=0@enabled=1@g' /etc/yum.repos.d/_copr_ublue-os-akmods.repo
-fi
-if compgen -G '/tmp/akmods-rpms/ublue-os/ublue-os-akmods-addons*.rpm' >/dev/null; then
-  dnf5 -y install /tmp/akmods-rpms/ublue-os/ublue-os-akmods-addons*.rpm
-elif compgen -G '/tmp/akmods-rpms/ublue-os/ublue-os-akmods*.rpm' >/dev/null; then
-  dnf5 -y install /tmp/akmods-rpms/ublue-os/ublue-os-akmods*.rpm
-fi
-
-shopt -s nullglob
-install_kmod_bundle \
-  /tmp/akmods-rpms/kmods/kmod-xone*.rpm \
-  /tmp/akmods-rpms/common/*xone*kmod-common*.rpm \
-  /tmp/akmods-rpms/kmods/kmod-xpadneo*.rpm \
-  /tmp/akmods-rpms/common/*xpadneo*kmod-common*.rpm \
-  /tmp/akmods-rpms/kmods/kmod-openrazer*.rpm \
-  /tmp/akmods-rpms/common/*openrazer*kmod-common*.rpm
-install_kmod_bundle \
-  /tmp/akmods-extra-rpms/kmods/kmod-*ryzen*smu*.rpm \
-  /tmp/akmods-extra-rpms/extra/kmod-*ryzen*smu*.rpm \
-  /tmp/akmods-extra-rpms/kmods/kmod-*zenergy*.rpm \
-  /tmp/akmods-extra-rpms/extra/kmod-*zenergy*.rpm
-
-if [[ -f /etc/yum.repos.d/_copr_ublue-os-akmods.repo ]]; then
-  sed -i 's@enabled=1@enabled=0@g' /etc/yum.repos.d/_copr_ublue-os-akmods.repo
-fi
-
-AKMODNV_PATH=/tmp/akmods-nvidia-rpms
-[[ -f ${AKMODNV_PATH}/kmods/nvidia-vars ]] ||
-  die "akmods-nvidia-open:ogc-44 missing ${AKMODNV_PATH}/kmods/nvidia-vars"
-INSTALL_SH=
-if [[ -x ${AKMODNV_PATH}/ublue-os/nvidia-install.sh || -f ${AKMODNV_PATH}/ublue-os/nvidia-install.sh ]]; then
-  INSTALL_SH=${AKMODNV_PATH}/ublue-os/nvidia-install.sh
-else
-  INSTALL_SH=$(find /tmp/akmods-nvidia-rpms -name nvidia-install.sh -type f -print -quit)
-fi
-[[ -n ${INSTALL_SH} ]] || die 'nvidia-install.sh missing from akmods-nvidia-open:ogc-44'
-IMAGE_NAME=base AKMODNV_PATH="${AKMODNV_PATH}" MULTILIB=1 bash "${INSTALL_SH}"
+# SELinux booleans for custom kernels and gaming runtimes (Steam/Proton JIT,
+# out-of-tree module loads). Each applied independently so one missing
+# boolean cannot skip the rest; all non-fatal with a warning.
+for sebool in domain_kernel_load_modules selinuxuser_execmod selinuxuser_execstack selinuxuser_execheap; do
+  setsebool -P "${sebool}" on 2>/dev/null ||
+    echo "SELinux boolean ${sebool} unavailable" >&2
+done
 
 rm -f /usr/share/vulkan/icd.d/nouveau_icd.*.json
 if [[ -e /usr/lib64/libnvidia-ml.so.1 ]]; then
@@ -115,14 +95,14 @@ kargs = [
 EOF
 
 dnf5 -y install \
-  --enablerepo="${FUSION_REPOS}" \
+  "${FUSION_REPOS[@]/#/--enablerepo=}" \
   --exclude='cuda*' \
   --exclude='*nvidia*cuda*' \
   libva-nvidia-driver.x86_64 \
   libva-nvidia-driver.i686
 install_priority vulkan-loader.x86_64 vulkan-loader.i686 vulkan-tools egl-wayland
 if ! have_rpm nvidia-settings; then
-  dnf5 -y install --enablerepo="${FUSION_REPOS}" --exclude='cuda*' nvidia-settings
+  dnf5 -y install "${FUSION_REPOS[@]/#/--enablerepo=}" --exclude='cuda*' nvidia-settings
 fi
 
 dnf5 -y install \
@@ -187,6 +167,10 @@ fi
   die 'scx-tools did not ship scx_loader.service'
 systemctl enable scx_loader.service
 
+# scx-manager GUI from the CachyOS addons COPR (isolated: repo disabled
+# again after install). On-demand alternative to the boot-enabled scx_loader.
+copr_install_isolated bieszczaders/kernel-cachyos-addons scx-manager
+
 install_any ghostty-tip ghostty
 install_any helium-browser-bin helium-browser
 install_priority t3code opencode-cli
@@ -212,8 +196,8 @@ install_any tuigreet greetd-tuigreet
 getent passwd greeter >/dev/null || useradd -r -s /usr/bin/nologin greeter
 systemctl enable greetd.service
 if [[ -f /usr/lib/systemd/system/sddm.service ]]; then
-  systemctl disable sddm.service
-  systemctl mask sddm.service
+  systemctl disable sddm.service || true
+  systemctl mask sddm.service || true
 fi
 
 if have_rpm zram-generator-defaults || have_rpm zram-generator; then
@@ -241,6 +225,8 @@ if [[ -f /usr/lib/os-release ]]; then
   if grep -q '^IMAGE_ID=' /usr/lib/os-release; then
     sed -i 's/^IMAGE_ID=.*/IMAGE_ID="ryven-sericea"/' /usr/lib/os-release
   else
+    # Start on a fresh line even if the file lacks a trailing newline.
+    [[ -z $(tail -c1 /usr/lib/os-release) ]] || printf '\n' >>/usr/lib/os-release
     echo 'IMAGE_ID="ryven-sericea"' >>/usr/lib/os-release
   fi
 fi
@@ -271,16 +257,19 @@ fi
 PROTON_BASE="https://github.com/CachyOS/proton-cachyos/releases/download/cachyos-${PROTON_CACHYOS_VER}"
 PROTON_TAR="proton-cachyos-${PROTON_CACHYOS_VER}-x86_64.tar.xz"
 PROTON_SUM="proton-cachyos-${PROTON_CACHYOS_VER}-x86_64.sha512sum"
+# Pinned checksum of PROTON_TAR. Update together with PROTON_CACHYOS_VER.
+PROTON_SHA512="713fe008d67e3491aef3b5b1d9ae2c112d7c2b58b3f23fc2387d1122fc131ff7e7f0ea27c67bf27973d906bdce6235c34098530ec4c786059438b153c6e16187"
 PROTON_DEST=/usr/share/steam/compatibilitytools.d
 dnf5 -y install tar xz curl coreutils
 mkdir -p /tmp/proton-cachyos "${PROTON_DEST}"
-curl -fsSL -o "/tmp/proton-cachyos/${PROTON_SUM}" "${PROTON_BASE}/${PROTON_SUM}"
-curl -fL --retry 3 -o "/tmp/proton-cachyos/${PROTON_TAR}" "${PROTON_BASE}/${PROTON_TAR}"
+curl -fsSL --proto '=https' --retry 3 --retry-all-errors -o "/tmp/proton-cachyos/${PROTON_SUM}" "${PROTON_BASE}/${PROTON_SUM}"
+curl -fL --proto '=https' --retry 3 --retry-all-errors -o "/tmp/proton-cachyos/${PROTON_TAR}" "${PROTON_BASE}/${PROTON_TAR}"
 (cd /tmp/proton-cachyos && sha512sum -c "${PROTON_SUM}")
+(cd /tmp/proton-cachyos && echo "${PROTON_SHA512}  ${PROTON_TAR}" | sha512sum -c -)
 tar -xJf "/tmp/proton-cachyos/${PROTON_TAR}" -C "${PROTON_DEST}"
 if [[ ! -f ${PROTON_DEST}/proton-cachyos/compatibilitytool.vdf && ! -f ${PROTON_DEST}/proton-cachyos-${PROTON_CACHYOS_VER}/compatibilitytool.vdf ]]; then
   vdf=$(find "${PROTON_DEST}" -name compatibilitytool.vdf -print -quit)
-  [[ -n ${vdf} ]] || die 'proton-cachyos tarball missing compatibilitytool.vdf'
+  [[ -n "${vdf}" ]] || die 'proton-cachyos tarball missing compatibilitytool.vdf'
 fi
 rm -rf /tmp/proton-cachyos
 

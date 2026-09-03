@@ -40,15 +40,16 @@
     },
     {
       "customType": "regex",
-      "description": "OGC kernel OCI tag in build.sh",
-      "managerFilePatterns": ["/(^|/)build_files/build\\.sh$/"],
+      "description": "Pin ghcr.io/ublue-os/base-main digest in WL/Sericea Containerfiles",
+      "managerFilePatterns": ["/(^|/)Containerfile\\.(wl|sericea)$/"],
       "matchStrings": [
-        "OGC_IMAGE='ghcr.io/opengamingcollective/kernel-packages-fedora:(?<currentValue>[^']+)'",
+        "FROM ghcr.io/ublue-os/base-main:latest@(?<currentDigest>sha256:[a-f0-9]+)",
       ],
       "datasourceTemplate": "docker",
       "registryUrlTemplate": "https://ghcr.io",
-      "depNameTemplate": "opengamingcollective/kernel-packages-fedora",
-      "packageNameTemplate": "opengamingcollective/kernel-packages-fedora",
+      "depNameTemplate": "ublue-os/base-main",
+      "packageNameTemplate": "ublue-os/base-main",
+      "autoReplaceStringTemplate": "FROM ghcr.io/ublue-os/base-main:latest@{{{newDigest}}}",
     },
     {
       "customType": "regex",
