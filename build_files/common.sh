@@ -303,11 +303,25 @@ apply_selinux_game_booleans() {
 # a "-latest-" marker, which we prefer. The project publishes no checksums
 # (verified 2026-09), so integrity rests on HTTPS from betterbird.eu; the
 # build fails closed on any download/extract error or missing binary.
-readonly BETTERBIRD_BASE='https://www.betterbird.eu/downloads'
+# Official sources for the same file set: the origin plus BetterBird's own
+# BunnyCDN mirror (identical listing verified 2026-09-03). The origin sits
+# on small shared hosting and intermittently fails from CI runners, so the
+# fetch falls over to the CDN.
+readonly BETTERBIRD_SOURCES=(
+  'https://www.betterbird.eu/downloads'
+  'https://betterbird-downloads.b-cdn.net'
+)
 
 install_betterbird() {
-  local listing files url ver
-  listing=$(curl -fsSL --proto '=https' --retry 5 --retry-all-errors --retry-delay 10 --retry-max-time 600 --connect-timeout 30 "${BETTERBIRD_BASE}/")
+  local listing files url ver base base2
+  listing=''
+  for base in "${BETTERBIRD_SOURCES[@]}"; do
+    if listing=$(curl -fsSL --proto '=https' --retry 3 --retry-all-errors --retry-delay 5 --retry-max-time 300 --connect-timeout 30 "${base}/" 2>/dev/null); then
+      break
+    fi
+    echo "BetterBird: listing fetch failed from ${base}; trying next source" >&2
+  done
+  [[ -n ${listing} ]] || die 'BetterBird: listing fetch failed from all sources'
   # Current release of each ESR line first ("-latest-" marker), then every
   # plain en-US x86_64 build. Exclude the Previous/ archive; highest
   # version wins.
@@ -316,9 +330,16 @@ install_betterbird() {
     files=$(grep -oE 'LinuxArchive/betterbird-[^"]*\.en-US\.linux-x86_64\.tar\.xz' <<<"${listing}" | grep -vE 'Previous/|-latest-' | LC_ALL=C sort -V || true)
   fi
   [[ -n ${files} ]] || die 'BetterBird: no x86_64 tarball found in the download listing'
-  url="${BETTERBIRD_BASE}/$(tail -n1 <<<"${files}")"
+  base2=''
+  for base2 in "${BETTERBIRD_SOURCES[@]}"; do
+    [[ ${base2} != ${base} ]] && break
+  done
+  url="${base}/$(tail -n1 <<<"${files}")"
   ver=$(basename "${url}" .en-US.linux-x86_64.tar.xz)
-  curl -fsSL --proto '=https' --retry 5 --retry-all-errors --retry-delay 10 --retry-max-time 3600 --connect-timeout 30 --max-time 3300 -o /tmp/betterbird.tar.xz "${url}"
+  if ! curl -fsSL --proto '=https' --retry 3 --retry-all-errors --retry-delay 10 --retry-max-time 1800 --connect-timeout 30 --max-time 1500 -o /tmp/betterbird.tar.xz "${url}"; then
+    echo "BetterBird: tarball download failed from ${base}; retrying via ${base2}" >&2
+    curl -fsSL --proto '=https' --retry 3 --retry-all-errors --retry-delay 10 --retry-max-time 1800 --connect-timeout 30 --max-time 1500 -o /tmp/betterbird.tar.xz "${base2}/$(tail -n1 <<<"${files}")"
+  fi
   rm -rf /opt/betterbird
   tar -xJf /tmp/betterbird.tar.xz -C /opt
   mv /opt/betterbird "/opt/${ver}"
