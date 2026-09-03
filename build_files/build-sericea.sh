@@ -85,7 +85,7 @@ KVER=$(rpm -q kernel-cachyos-lto-core --qf '%{VERSION}-%{RELEASE}.%{ARCH}\n' | L
 # CachyOS kernel via their akmod-nvidia (no prebuilt modules exist for it;
 # see build.sh for the full package-by-package rationale). The LTO kernel
 # tree is clang-built, so clang/llvm join the build deps.
-dnf5 -y install gcc make clang llvm
+dnf5 -y install gcc make clang llvm lld
 # Install the akmods tooling first: the akmod-nvidia %post (which runs
 # inside the Negativo17 transaction below) invokes
 # /usr/sbin/akmods-ostree-post, which only exists once the akmods package
@@ -128,13 +128,15 @@ chmod 0770 /run/akmods
 # -fexperimental-late-parse-attributes, -fsplit-lto-unit,
 # -mstack-alignment=8 all rejected by gcc); the module must be built with
 # the same compiler family as the kernel.
+# LD=ld.lld: the kernel's LTO config adds `-mllvm ...` to KBUILD_LDFLAGS;
+# ld.bfd parses -mllvm as `-m llvm` ("unrecognised emulation mode: llvm"),
+# lld accepts it natively.
 # KCFLAGS="-fno-lto -fno-split-lto-unit": the kernel CFLAGS enable thin LTO,
-# which makes module .o files LLVM bitcode; NVIDIA's Kbuild partial-links
-# them with `ld -r`, which cannot read bitcode. KCFLAGS is appended after
-# the kernel CFLAGS, so the module objects are plain ELF (standard
-# non-LTO-module-against-LTO-kernel combination).
+# which makes module .o files LLVM bitcode that `ld -r` partial links cannot
+# read. KCFLAGS is appended after the kernel CFLAGS, so the module objects
+# are plain ELF (standard non-LTO-module-against-LTO-kernel combination).
 # MAKEFLAGS: parallel make for the kernel-module build.
-CC=clang KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" akmods --force --kernels "${KVER}"
+CC=clang LD=ld.lld KCFLAGS="-fno-lto -fno-split-lto-unit" MAKEFLAGS="-j$(nproc)" akmods --force --kernels "${KVER}"
 if ! find "/usr/lib/modules/${KVER}" -name 'nvidia.ko*' -print -quit | grep -q .; then
   # Dump the akmod build log before failing so CI stdout shows the real
   # compiler error instead of just the missing .ko.
