@@ -729,6 +729,13 @@ systemctl enable nohang.service
 # userspace only: its kmod targets the Terra kernel and would join our
 # akmods build, so mainline razer_* drivers (in the CachyOS kernel) are the
 # device support; the daemon + python bindings work over them.
+# The current ublue F44 base image bundles gamemode (official Fedora
+# package); falcond Conflicts with it and the design keeps GameMode
+# deliberately absent (invariant: 'gamemode absent (falcond conflict)'),
+# so remove it before the falcond install.
+if have_rpm gamemode; then
+  dnf5 -y remove gamemode
+fi
 install_priority falcond falcond-profiles
 install_priority vicinae lact superfile
 install_priority openrazer openrazer-daemon python3-openrazer
