@@ -40,8 +40,8 @@
     },
     {
       "customType": "regex",
-      "description": "container-structure-test release pin in image workflows",
-      "managerFilePatterns": ["/(^|/)\\.github/workflows/build-ryven.*\\.yml$/"],
+      "description": "container-structure-test release pin in the image workflow",
+      "managerFilePatterns": ["/(^|/)\\.github/workflows/build\\.yml$/"],
       "matchStrings": ["CST_VER: (?<currentValue>v[0-9.]+)"],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "GoogleContainerTools/container-structure-test",

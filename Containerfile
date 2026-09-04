@@ -12,7 +12,7 @@ COPY _build /_build
 # Floating ':44' tag: always pulls the newest ublue F44 build, no digest or
 # version lock (zero-maintenance policy). Renovate automerges the tag bump
 # when the baseline moves to the next Fedora release.
-FROM ghcr.io/ublue-os/kinoite-main:44
+FROM ghcr.io/ublue-os/kinoite-main:latest
 
 # /opt must be a real directory so RPM payloads (Zen, Brave) persist.
 RUN rm -rf /opt && mkdir -p /opt

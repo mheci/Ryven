@@ -1,17 +1,17 @@
 ---
-# Independent workflow. No concurrency group: GitHub cancels pending runs in a
-# shared group ("higher priority waiting request") even with
-# cancel-in-progress: false. Sibling images have their own files so a failed
-# compose cannot block another image publishing.
-name: Build ryven-wl
+# Unified build for all three Ryven images. One matrix job runs the same
+# proven just pipeline (build -> rechunk -> tag -> lint -> CST -> push ->
+# cosign -> attest) per image; only names, the Containerfile, the CST
+# config, and the host-fetched tarballs differ per variant.
+name: build
 on:
   pull_request:
     branches:
       - main
   schedule:
-    # Weekly rebuild/update every Saturday (06:00 UTC) so the image always
-    # tracks the current Fedora 44 release tip (floating :44 base + refresh
-    # upgrade in the build).
+    # Weekly rebuild/update every Saturday (06:00 UTC) so every image
+    # always tracks the current tip (floating :latest base + refresh
+    # upgrade in the compose).
     - cron: '0 6 * * 6'
   push:
     branches:
@@ -22,19 +22,39 @@ on:
 
 env:
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
-  IMAGE_NAME: "ryven-wl"
-  CONTAINERFILE: "Containerfile.wl"
 
 jobs:
   build_push:
-    name: Build ryven-wl
+    name: Build ${{ matrix.image_name }}
     runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image_name: Ryven
+            containerfile: Containerfile
+            cst_config: ci/container-structure-test.yaml
+            grype_category: grype-ryven
+            fetch_zen: 'true'
+          - image_name: ryven-wl
+            containerfile: Containerfile.wl
+            cst_config: ci/container-structure-test-wl.yaml
+            grype_category: grype-ryven-wl
+            fetch_zen: 'false'
+          - image_name: ryven-sericea
+            containerfile: Containerfile.sericea
+            cst_config: ci/container-structure-test-sericea.yaml
+            grype_category: grype-ryven-sericea
+            fetch_zen: 'false'
     permissions:
       contents: read
       packages: write
       id-token: write
       attestations: write
       security-events: write
+    env:
+      IMAGE_NAME: ${{ matrix.image_name }}
+      CONTAINERFILE: ${{ matrix.containerfile }}
 
     steps:
       - name: Checkout
@@ -77,6 +97,19 @@ jobs:
           ls -laR _build/betterbird 2>/dev/null || echo 'NO _build/betterbird'
           test -s _build/betterbird/*.tar.xz || { echo 'BetterBird tarball missing' >&2; exit 1; }
           echo 'BetterBird tarball present'
+
+      - name: Fetch Zen Browser
+        if: matrix.fetch_zen == 'true'
+        # Same host-side rationale as BetterBird: install_zen in compose.sh
+        # installs the tarball from /ctx with no network in the container.
+        run: bash ci/fetch-zen.sh
+
+      - name: Verify Zen fetch
+        if: matrix.fetch_zen == 'true'
+        run: |
+          ls -la _build/zen 2>/dev/null || echo 'NO _build/zen'
+          test -s _build/zen/zen.linux-x86_64.tar.* || { echo 'Zen tarball missing' >&2; exit 1; }
+          echo 'Zen tarball present'
 
       - name: Build Image
         id: build-image
@@ -135,7 +168,7 @@ jobs:
           export DOCKER_HOST="unix://${sock}"
           export TMPDIR="${RUNNER_TEMP}"
           /tmp/cst test --driver docker --image "${IMAGE_NAME}:${DEFAULT_TAG}" \
-            --config ci/container-structure-test-wl.yaml
+            --config ${{ matrix.cst_config }}
 
       - name: Grype
         continue-on-error: true
@@ -153,7 +186,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           sarif_file: ${{ steps.grype.outputs.sarif }}
-          category: grype-ryven-wl
+          category: ${{ matrix.grype_category }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1

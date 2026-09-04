@@ -1,5 +1,5 @@
 # Hadolint for a Fedora bootc Containerfile (not Debian/Alpine).
-# DL3006: base stages track ublue stream tags with digest pins (Renovate bumps).
+# DL3006: base stages track floating ublue :latest tags (weekly CI rebuilds).
 # DL3041: dnf version pins fight Fedora modular updates; compose uses NEVRA ladder in build.sh.
 # DL3059: consecutive RUN is intentional (opt mkdir vs bind-mounted compose).
 ignored:

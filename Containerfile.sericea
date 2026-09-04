@@ -13,7 +13,7 @@ COPY _build /_build
 # Base image: floating ':44' tag = newest ublue F44 build, no digest or
 # version lock (zero-maintenance policy). Renovate automerges the tag bump
 # when the baseline moves to the next Fedora release.
-FROM ghcr.io/ublue-os/base-main:44
+FROM ghcr.io/ublue-os/base-main:latest
 
 RUN rm -rf /opt && mkdir -p /opt
 

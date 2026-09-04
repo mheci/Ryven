@@ -65,10 +65,8 @@ Weekly CI rebuilds GHCR (Sunday 06:00 UTC). ISO follows a successful scheduled i
 - **BetterBird** (Thunderbird fork): the **latest x86_64 release is pulled at
   compose time** (weekly CI = always current on the published image), installed
   to `/opt/betterbird` with a desktop entry; no Fedora package exists.
-- **mise**: installed from **COPR `jdxcode/mise`** (the documented dnf method
-  for Fedora 41+, tracks mise releases) with that repo left enabled at rest so
-  host `dnf upgrade` keeps it current, plus system-wide `auto_update = true` in
-  `/etc/mise/config.toml` (per mise.jdx.dev/installing-mise.html).
+- **mise**: installed from **Terra** (disabled at rest like every third-party repo),
+  plus system-wide `auto_update = true` in `/etc/mise/config.toml`.
 - **`vm.max_map_count=2147483642`** (MAX_INT − 5, the SteamOS default per the
   Arch gaming wiki): `/etc/sysctl.d/90-ryven-max-map-count.conf`, survives bootc updates.
 - **Gaming performance** (Arch wiki `Gaming#Improving_performance`, all images):

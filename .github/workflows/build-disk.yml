@@ -3,7 +3,7 @@ name: Build disk images
 
 on:
   workflow_run:
-    workflows: ["Build ryven"]
+    workflows: ["build"]
     types: [completed]
   workflow_dispatch:
     inputs:
