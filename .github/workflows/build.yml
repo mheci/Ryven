@@ -17,7 +17,12 @@ on:
     branches:
       - main
     paths-ignore:
-      - '**/README.md'
+      # Docs and lint config carry no image content; everything else rebuilds.
+      - '**/*.md'
+      - 'AGENTS.md'
+      - '.hadolint.yaml'
+      - '.github/renovate.json5'
+      - '.github/dependabot.yml'
   workflow_dispatch:
 
 env:

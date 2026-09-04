@@ -4,6 +4,7 @@
 # DL3059: consecutive RUN is intentional (opt mkdir vs bind-mounted compose).
 ignored:
   - DL3006
+  - DL3007 # :latest bases are standing policy (weekly CI floats everything).
   - DL3041
   - DL3059
   - DL4006
