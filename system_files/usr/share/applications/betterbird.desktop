@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=BetterBird
+GenericName=Mail Client
+Comment=BetterBird — the email client Thunderbird should have been
+Exec=betterbird
+Icon=betterbird
+Terminal=false
+Categories=Network;Email;
+MimeType=x-scheme-handler/mailto;x-scheme-handler/news;
+StartupNotify=true

@@ -1,0 +1,33 @@
+# Anaconda installer environment for bootc-installer ISOs — the new Fedora
+# installer (Anaconda + Web UI). Built per image variant on top of the
+# published image itself; bootc-image-builder then wraps this container plus
+# --bootc-installer-payload-ref into install.iso (see .github/workflows/
+# build-iso.yml and disk_config/installer.toml).
+#
+# Package list = upstream bootc-installer recipe from the osbuild/image-builder
+# README, plus anaconda-webui (the web-based UI that replaces GTK Anaconda;
+# also forced on via inst.webui in disk_config/installer.toml).
+ARG BASE_IMAGE=ghcr.io/mheci/ryven:latest
+FROM ${BASE_IMAGE}
+
+RUN dnf install -y \
+      anaconda \
+      anaconda-webui \
+      anaconda-install-env-deps \
+      anaconda-dracut \
+      dracut-config-generic \
+      dracut-network \
+      net-tools \
+      squashfs-tools \
+      grub2-efi-x64-cdboot \
+      python3-mako \
+      lorax-templates-* \
+      biosdevname \
+      prefixdevname \
+      && dnf clean all
+
+# Fedora 43+: put the EFI trees where lorax expects them.
+RUN mkdir -p /boot/efi && cp -ra /usr/lib/efi/*/*/EFI /boot/efi
+
+# lorax wants a /mnt -> /var/mnt symlink target that some bootc images lack.
+RUN mkdir -p /var/mnt

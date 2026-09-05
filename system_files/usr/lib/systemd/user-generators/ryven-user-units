@@ -1,0 +1,35 @@
+#!/bin/sh
+# Enable per-user systemd units at the user's first session.
+#
+# composefs builds have no user session, so `systemctl --user enable` cannot
+# run at build time; this user-generator creates the default.target.wants
+# symlinks systemd expects instead. Runs at every session start; `ln -sfn`
+# makes it idempotent. Each rule is guarded so the generator is inert on
+# images that do not ship the corresponding daemon.
+#
+#  - oo7-daemon.service           (all images; Secret Service keyring; only
+#                                  linked when the daemon binary exists)
+#  - plasma-kwallet-pam.service   (ryven image; shipped by the pam-kwallet
+#                                  package, enables KDE Wallet PAM helper)
+#  - vicinae.service              (all images; the native launcher starts at
+#                                  login; shipped by the vicinae package)
+#  - quickshell-reload.path       (kunzite/sericea; reloads the Quickshell
+#                                  bar when its user config changes)
+
+wants="${SYSTEMD_USER_UNIT_PATH:-${XDG_RUNTIME_DIR:-/tmp}/systemd/user}/default.target.wants"
+mkdir -p "$wants"
+
+link_unit() { # $1 = unit file name under /usr/lib/systemd/user
+  [ -f "/usr/lib/systemd/user/$1" ] || return 0
+  ln -sfn "/usr/lib/systemd/user/$1" "${wants}/$1" 2>/dev/null || true
+}
+
+# oo7 is the Secret Service keyring on every image; the binary guard keeps
+# the generator inert if the cargo build was ever skipped.
+if [ -x /usr/bin/oo7-daemon ]; then
+  link_unit oo7-daemon.service
+fi
+link_unit plasma-kwallet-pam.service
+link_unit vicinae.service
+link_unit quickshell-reload.path
+exit 0

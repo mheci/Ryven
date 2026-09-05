@@ -1,0 +1,197 @@
+name: Build ISOs
+
+# One installer ISO per image (ryven, ryven-kunzite, ryven-sericea) using the
+# new Fedora installer: bootc-image-builder's `bootc-installer` type, which
+# wraps an Anaconda (+ Web UI) environment built from each image itself around
+# the published ghcr payload. The deprecated `anaconda-iso` type is not used.
+#
+# Compression: the ISO's internal squashfs (zstd) is fixed by image-builder;
+# the artifact itself is compressed with `xz -9e` (maximum xz preset) and
+# uploaded pre-compressed (artifact zip level 0 — recompressing .xz is
+# pointless).
+
+on:
+  workflow_run:
+    workflows: ["build"]
+    types: [completed]
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "installer/Containerfile"
+      - "disk_config/installer.toml"
+      - ".github/workflows/build-iso.yml"
+
+env:
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
+  DEFAULT_TAG: "latest"
+  BIB_IMAGE: "quay.io/centos-bootc/bootc-image-builder:latest"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  iso:
+    name: ISO (${{ matrix.image }})
+    # Weekly (chained off the scheduled image build), on demand, and for PRs
+    # touching the installer files (PRs build but do not upload).
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'schedule')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [ryven, ryven-kunzite, ryven-sericea]
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Prepare environment
+        run: |
+          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
+          echo "STAMP=$(date -u -d '${{ github.run_started_at }}' +%Y%m%d)" >> ${GITHUB_ENV}
+
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
+
+      - name: Lift AppArmor bwrap confinement
+        # Ubuntu 24.04+ ships bwrap-userns-restrict: an AppArmor profile that
+        # stacks a capability-less unpriv_bwrap profile onto every bwrap child
+        # process. osbuild runs its stages inside bwrap, so the confinement
+        # denies the container-storage bind mounts and the build dies with
+        # "mount: /run/osbuild/containers/storage: permission denied".
+        # Removing the profile lets bwrap run unconfined inside the already
+        # --privileged builder container.
+        run: |
+          if [ -f /etc/apparmor.d/bwrap-userns-restrict ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/bwrap-userns-restrict || true
+          fi
+          for p in bwrap unpriv_bwrap; do
+            printf '%s' "$p" | sudo tee /sys/kernel/security/apparmor/.remove >/dev/null 2>&1 || true
+          done
+          sudo grep bwrap /sys/kernel/security/apparmor/profiles || echo "no bwrap profiles loaded"
+
+      - name: Mount container storage BTRFS loopback
+        # osbuild (inside the builder container) cannot mount from the
+        # runner's root filesystem ("mount: /run/osbuild/containers/storage:
+        # permission denied"). Put container storage on a real block device
+        # (sparse btrfs loopback, zstd-compressed) — the pattern ublue-os/
+        # bazzite uses for its ISO builds. Driver forced to overlay for the
+        # containers-storage refs image-builder generates.
+        run: |
+          set -euo pipefail
+          sudo truncate -s 110G /mnt/podman-storage.img
+          sudo mkfs.btrfs -f -m single -d single /mnt/podman-storage.img
+          sudo podman system reset --force
+          sudo systemctl stop podman.service
+          LOOP=$(sudo losetup --find --show --direct-io=on /mnt/podman-storage.img)
+          sudo mkdir -p /mnt/podman-storage
+          sudo mount -o compress-force=zstd:2,discard=async,noatime "$LOOP" /mnt/podman-storage
+          sudo mkdir -p /mnt/podman-storage/storage /mnt/podman-storage/tmp
+          sudo mount --bind /mnt/podman-storage/storage /var/lib/containers/storage
+          printf '[storage]\ndriver = "overlay"\nrunroot = "/run/containers/storage"\ngraphroot = "/var/lib/containers/storage"\n' | sudo tee /etc/containers/storage.conf
+          sudo systemctl start podman.service
+
+      - name: Install xz
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xz-utils
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build installer container
+        # Anaconda + Web UI layered on the published image. Runs podman
+        # directly (not bootc-image-builder-action) because the installer
+        # container lives in local storage as a localhost/ ref, which the
+        # action would try to pull from a registry.
+        run: |
+          set -euo pipefail
+          sudo env TMPDIR=/mnt/podman-storage/tmp podman build \
+            --build-arg BASE_IMAGE="${IMAGE_REGISTRY}/${{ matrix.image }}:${DEFAULT_TAG}" \
+            -t "localhost/${{ matrix.image }}-installer:${DEFAULT_TAG}" \
+            -f installer/Containerfile .
+
+      - name: Build ISO (bootc-installer)
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          sudo env TMPDIR=/mnt/podman-storage/tmp podman run --rm --privileged --pull=newer --net=host \
+            --security-opt label=type:unconfined_t \
+            --security-opt apparmor=unconfined \
+            --security-opt seccomp=unconfined \
+            -v "${PWD}/disk_config/installer.toml:/config.toml:ro" \
+            -v "${PWD}/output:/output" \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            "${BIB_IMAGE}" \
+            --type bootc-installer \
+            --rootfs=btrfs \
+            --use-librepo=True \
+            --installer-payload-ref "${IMAGE_REGISTRY}/${{ matrix.image }}:${DEFAULT_TAG}" \
+            "localhost/${{ matrix.image }}-installer:${DEFAULT_TAG}"
+
+      - name: Diagnostics (mount failure)
+        if: failure()
+        run: |
+          uname -r
+          cat /sys/module/apparmor/parameters/enabled 2>/dev/null || true
+          sudo dmesg | tail -80 || true
+          findmnt -o TARGET,FSTYPE,OPTIONS,PROPAGATION | head -40 || true
+          sudo podman run --rm --privileged \
+            --security-opt apparmor=unconfined --security-opt seccomp=unconfined \
+            -v /var/lib/containers/storage:/var/lib/containers/storage \
+            --entrypoint /bin/bash "${BIB_IMAGE}" -c '
+              cat /proc/self/attr/current 2>/dev/null || true
+              mount --version | head -1
+              bwrap --version || true
+              mkdir -p /tmp/dst
+              mount --make-private -o rbind,rw,0755 /var/lib/containers/storage /tmp/dst \
+                && echo DIRECT_MOUNT_OK || echo DIRECT_MOUNT_FAIL
+              bwrap --chdir / --die-with-parent --new-session \
+                --unshare-ipc --unshare-pid --unshare-net \
+                --ro-bind / / --tmpfs /tmp --proc /proc --dev /dev \
+                /bin/sh -c "
+                  cat /proc/self/attr/current 2>/dev/null || true
+                  mkdir -p /tmp/dst2
+                  mount --make-private -o rbind,rw,0755 /var/lib/containers/storage /tmp/dst2 \
+                    && echo BWRAP_MOUNT_OK || echo BWRAP_MOUNT_FAIL
+                  dmesg 2>/dev/null | tail -20 || true
+                "
+            ' || true
+
+      - name: Date-stamp and compress (xz -9e, maximum)
+        run: |
+          set -euo pipefail
+          src=$(find output -type f -name '*.iso' -print -quit)
+          [[ -n ${src} ]] || { echo "No ISO under output/" >&2; find output -type f >&2 || true; exit 1; }
+          DEST="${PWD}/stamped"
+          mkdir -p "${DEST}"
+          mv "${src}" "${DEST}/${{ matrix.image }}-${STAMP}-installer.iso"
+          xz -9e -T0 "${DEST}/${{ matrix.image }}-${STAMP}-installer.iso"
+          sha256sum "${DEST}"/* | tee "${DEST}/SHA256SUMS"
+          ls -lh "${DEST}"
+          df -h "${PWD}" /mnt/podman-storage | tail -2
+
+      - name: Show disk space
+        if: always()
+        run: |
+          sudo df -h || true
+          sudo du -sh /mnt/podman-storage.img 2>/dev/null || true
+
+      - name: Upload ISO and checksum
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.image }}-${{ env.STAMP }}-installer-iso
+          path: ${{ github.workspace }}/stamped
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          overwrite: true

@@ -1,0 +1,273 @@
+# Ryven host recipes. Do not reboot unless the user passes reboot="1".
+
+[group('security')]
+secure-boot-enroll reboot="0":
+    #!/usr/bin/bash
+    set -euo pipefail
+    CERT=""
+    for c in /etc/pki/akmods/certs/akmods-ublue.der \
+             /etc/pki/akmods/certs/public_key.der \
+             /usr/share/ublue-os/akmods/certs/akmods-ublue.der; do
+      if [[ -f $c ]]; then
+        CERT=$c
+        break
+      fi
+    done
+    if [[ -z $CERT ]]; then
+      echo "No MOK certificate found on this image." >&2
+      echo "Ryven ships an unsigned CachyOS kernel: keep Secure Boot disabled" >&2
+      echo "unless you sign the kernel and modules with your own MOK." >&2
+      exit 1
+    fi
+    echo "Importing ${CERT} into MOK. Confirm in the firmware blue screen after reboot."
+    sudo mokutil --import "${CERT}"
+    if [[ "{{ reboot }}" == "1" ]]; then
+      echo "reboot=1 set; rebooting."
+      sudo systemctl reboot
+    else
+      echo "Reboot required to finish enrollment. Not rebooting."
+    fi
+
+[group('security')]
+tpm-luks-unlock:
+    #!/usr/bin/bash
+    set -euo pipefail
+    if [[ ${EUID} -ne 0 ]]; then
+      exec sudo /usr/bin/ujust tpm-luks-unlock
+    fi
+    mapfile -t LUKS < <(lsblk -np -o NAME,FSTYPE | awk '$2=="crypto_LUKS"{print $1}')
+    if [[ ${#LUKS[@]} -eq 0 ]]; then
+      echo "No LUKS devices found. Refusing to bind TPM." >&2
+      exit 1
+    fi
+    echo "LUKS devices:"
+    printf '  %s\n' "${LUKS[@]}"
+    echo "This binds TPM2 PCR unlock via clevis. A failed bind can make the volume unbootable."
+    read -r -p "Type BIND to continue: " confirm
+    if [[ $confirm != BIND ]]; then
+      echo "Aborted."
+      exit 1
+    fi
+    for dev in "${LUKS[@]}"; do
+      clevis luks bind -d "${dev}" tpm2 '{"pcr_bank":"sha256"}'
+    done
+    echo "Clevis bind complete. Rebuild initramfs if needed: rpm-ostree initramfs --enable"
+    echo "Not rebooting."
+
+# Create a falcond user profile from the Ryven gaming template (options documented in its header; user profiles override system ones).
+[group('performance')]
+falcond-profile name="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    [[ -n "{{ name }}" ]] || { echo "Usage: ujust falcond-profile name=<game-exe>"; exit 1; }
+    [[ ${name} != */* && ${name} != *\"* ]] || { echo "name may not contain / or \"" >&2; exit 1; }
+    if [[ ${EUID} -ne 0 ]]; then
+      exec sudo /usr/bin/ujust falcond-profile name="{{ name }}"
+    fi
+    mkdir -p /usr/share/falcond/profiles/user
+    dest="/usr/share/falcond/profiles/user/${name}.conf"
+    install -m 0644 /usr/share/ryven/falcond/ryven-gaming-template.conf "${dest}"
+    sed -i "s/^name = .*/name = \"${name}\"/" "${dest}"
+    echo "Wrote ${dest}. Edit it, then: systemctl restart falcond"
+
+# Launch a game with the wiki's latency recommendations (LD_BIND_NOW per invocation + nice).
+[group('performance')]
+game cmd="" nice="-4":
+    #!/usr/bin/bash
+    set -euo pipefail
+    [[ -n "{{ cmd }}" ]] || { echo "Usage: ujust game cmd='steam' [nice=-4]"; exit 1; }
+    export LD_BIND_NOW=1
+    exec nice -n "{{ nice }}" bash -c "{{ cmd }}"
+
+[group('performance')]
+scx-select scheduler="" start="0":
+    #!/usr/bin/bash
+    set -euo pipefail
+    mapfile -t AVAIL < <(compgen -c | grep -E '^scx_' | sort -u || true)
+    if [[ -z "{{ scheduler }}" ]]; then
+      echo "Installed sched-ext userspace binaries:"
+      printf '  %s\n' "${AVAIL[@]:-none}"
+      echo "Usage: ujust scx-select scheduler=scx_lavd start=1"
+      echo "Image default is scx_lavd enabled at boot. Never reboots."
+      exit 0
+    fi
+    WANT="{{ scheduler }}"
+    if [[ ${WANT} != scx_* ]]; then
+      WANT="scx_${WANT}"
+    fi
+    if ! command -v "${WANT}" >/dev/null 2>&1; then
+      echo "Unknown scheduler ${WANT}. Available:" >&2
+      printf '  %s\n' "${AVAIL[@]:-none}" >&2
+      exit 1
+    fi
+    if [[ ${EUID} -ne 0 ]]; then
+      exec sudo /usr/bin/ujust scx-select scheduler="{{ scheduler }}" start="{{ start }}"
+    fi
+    mkdir -p /etc/default
+    if [[ -f /etc/default/scx ]] && grep -q '^SCX_SCHEDULER=' /etc/default/scx; then
+      sed -i "s/^SCX_SCHEDULER=.*/SCX_SCHEDULER=${WANT}/" /etc/default/scx
+    else
+      printf 'SCX_SCHEDULER=%s\nSCX_FLAGS=--performance\n' "${WANT}" >>/etc/default/scx
+    fi
+    echo "Wrote /etc/default/scx with ${WANT} (flags preserved)."
+    if [[ "{{ start }}" == "1" ]]; then
+      if [[ -f /usr/lib/systemd/system/scx.service || -f /etc/systemd/system/scx.service ]]; then
+        systemctl enable --now scx.service || systemctl restart scx.service
+      elif [[ -f /usr/lib/systemd/system/scx-loader.service || -f /etc/systemd/system/scx-loader.service ]]; then
+        systemctl enable --now scx-loader.service || true
+      else
+        echo "No scx systemd unit. Start manually: ${WANT}"
+      fi
+    else
+      echo "Not starting a scheduler (start=0). A bad sched-ext can panic the host."
+    fi
+    echo "Not rebooting."
+
+[group('theme')]
+theme name="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    if [[ -z "{{ name }}" ]]; then
+      echo "Available Ryven themes (tokens in /usr/share/ryven/themes/):"
+      for f in /usr/share/ryven/themes/*.json; do
+        echo "  $(basename "${f}" .json)"
+      done
+      echo "Usage: ujust theme name=navy|dusk"
+      exit 0
+    fi
+    case "{{ name }}" in
+      navy) scheme="Ryven" ;;
+      dusk) scheme="Ryven Dusk" ;;
+      *) echo "Unknown theme '${{ name }}' (available: navy, dusk)" >&2; exit 1 ;;
+    esac
+    # Persistent per-user token; session tooling reads this. /var/lib is
+    # root-owned, so the token lives in the user's config dir instead.
+    token_dir="${HOME}/.config/ryven"
+    mkdir -p "${token_dir}"
+    echo "{{ name }}" >"${token_dir}/theme"
+    echo "Theme '${{ name }}' token written to ${token_dir}/theme."
+    # Plasma 6 ships kwriteconfig6; kwriteconfig5 is the legacy name (fallback chain).
+    wc=""
+    if command -v kwriteconfig5 >/dev/null 2>&1; then wc=kwriteconfig5;
+    elif command -v kwriteconfig6 >/dev/null 2>&1; then wc=kwriteconfig6; fi
+    case "${XDG_CURRENT_DESKTOP:-}" in
+      *KDE*)
+        if [[ -n ${wc} ]]; then
+          "${wc}" --file kdeglobals --group General --key ColorScheme "${scheme}"
+          echo "KDE color scheme set to '${scheme}'. New components pick it up; log out/in to restyle the whole session."
+        else
+          echo "No kwriteconfig5/6 found; set ColorScheme via System Settings manually." >&2
+        fi
+        ;;
+      Hyprland*|sway*|Sway*)
+        echo "Session colors (hyprlock/swaylock/dunst/bar) are static Ryven palette files; the token records your choice for future consumers."
+        ;;
+      *)
+        if [[ -n ${wc} ]]; then
+          "${wc}" --file kdeglobals --group General --key ColorScheme "${scheme}"
+          echo "KDE color scheme set to '${scheme}'."
+        fi
+        ;;
+    esac
+    echo "Not rebooting."
+
+# DLSS status: effective env defaults, cached nvngx DLLs under Steam, verify steps.
+[group('gaming')]
+dlss:
+    #!/usr/bin/bash
+    set -euo pipefail
+    echo "Effective defaults (override per-game in Steam launch options):"
+    for v in PROTON_ENABLE_NVAPI PROTON_DLSS_UPGRADE PROTON_DLSS_INDICATOR PROTON_ENABLE_HDR; do
+      printf '  %s=%s\n' "${v}" "${!v:-<unset>}"
+    done
+    echo "Cached nvngx_dlss DLLs under ~/.steam (mtime, size, path):"
+    find ~/.steam -name 'nvngx_dlss*.dll' 2>/dev/null | while read -r f; do
+      stat -c '  %y %s %n' "${f}"
+    done || true
+    echo "PROTON_DLSS_UPGRADE=1 refreshes these to the newest release at game"
+    echo "launch (bundled DLLs are the offline fallback). Verify in-game with"
+    echo "PROTON_DLSS_INDICATOR=1 in the Steam launch options."
+
+# NVIDIA Smooth Motion (driver frame-gen) on|off|status for games without DLSS FG (RTX 40+, NVIDIA 565+; off by default: input lag + overlay conflicts).
+[group('gaming')]
+smooth-motion state="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    f=/etc/environment.d/63-ryven-smooth-motion.conf
+    if [[ -z "{{ state }}" || "{{ state }}" == status ]]; then
+      if [[ -f ${f} ]]; then echo "Smooth Motion ON (${f}):"; cat "${f}"; else echo "Smooth Motion OFF (no ${f})."; fi
+      echo "Usage: ujust smooth-motion on|off — RTX 40 series or newer, NVIDIA 565+."
+      exit 0
+    fi
+    if [[ ${EUID} -ne 0 ]]; then
+      exec sudo /usr/bin/ujust smooth-motion "{{ state }}"
+    fi
+    case "{{ state }}" in
+      on) printf '# Ryven: NVIDIA Smooth Motion (driver frame-gen). See ujust smooth-motion.\nNVPRESENT_ENABLE_SMOOTH_MOTION=1\nNVPRESENT_QUEUE_FAMILY=1\n' >"${f}" ;;
+      off) rm -f "${f}" ;;
+      *) echo "Usage: ujust smooth-motion on|off|status" >&2; exit 1 ;;
+    esac
+    echo "Smooth Motion {{ state }}. Restart Steam/games to pick it up. Not rebooting."
+
+# Write Brave Origin VA-API hardware decode flags for nvidia|amd|intel (CachyOS wiki sets; verify at brave://gpu + DevTools Media tab).
+[group('gaming')]
+brave-hwaccel gpu="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    dest=~/.config/brave-origin-flags.conf
+    extra=()
+    case "{{ gpu }}" in
+      "") echo "Usage: ujust brave-hwaccel nvidia|amd|intel  (writes ${dest})"; exit 0 ;;
+      nvidia) extra=(
+        --enable-features=VaapiVideoDecoder,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoEncoder,VaapiOnNvidiaGPUs,VaapiIgnoreDriverChecks
+      ) ;;
+      amd) extra=(
+        --ignore-gpu-blocklist
+        --enable-gpu-rasterization
+        --enable-zero-copy
+        --enable-features=AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoEncoder,CanvasOopRasterization,VaapiIgnoreDriverChecks,UseMultiPlaneFormatForHardwareVideo
+      ) ;;
+      intel) extra=(
+        --enable-features=VaapiVideoDecoder,AcceleratedVideoDecodeLinuxGL,AcceleratedVideoDecodeLinuxZeroCopyGL,AcceleratedVideoEncoder,VaapiIgnoreDriverChecks,UseMultiPlaneFormatForHardwareVideo
+      ) ;;
+      *) echo "Unknown GPU '{{ gpu }}' (want nvidia|amd|intel)" >&2; exit 1 ;;
+    esac
+    if [[ -f ${dest} ]]; then cp "${dest}" "${dest}.bak"; fi
+    mkdir -p "$(dirname "${dest}")"
+    printf '%s\n' '--ozone-platform-hint=auto' "${extra[@]}" >"${dest}"
+    echo "Wrote ${dest}. Restart Brave Origin, verify at brave://gpu. Not rebooting."
+
+# Launch the Pi AI coding agent (pi.dev) in this directory
+pi *args="":
+    #!/usr/bin/bash
+    set -euo pipefail
+    exec /usr/bin/pi "$@"
+
+# Seed an editable bar config if needed, then open Pi inside it (kunzite/sericea)
+customize-bar:
+    #!/usr/bin/bash
+    set -euo pipefail
+    if [[ ! -d /etc/xdg/quickshell ]]; then
+        echo "The Quickshell bar ships on ryven-kunzite and ryven-sericea only." >&2
+        exit 1
+    fi
+    if [[ ! -f ${HOME}/.config/quickshell/shell.qml ]]; then
+        mkdir -p "${HOME}/.config/quickshell"
+        cp -a /etc/xdg/quickshell/. "${HOME}/.config/quickshell/"
+        echo "Seeded ~/.config/quickshell from system defaults."
+    fi
+    cd "${HOME}/.config/quickshell"
+    echo "Bar config: ${PWD} — its AGENTS.md teaches pi the layout and contract."
+    echo "Every save auto-reloads the bar; logs: journalctl --user -u quickshell -f"
+    exec /usr/bin/pi
+
+# Restart the bar now (saving any config file does this automatically)
+reload-bar:
+    #!/usr/bin/bash
+    set -euo pipefail
+    if [[ ! -f /usr/lib/systemd/user/quickshell.service ]]; then
+        echo "The Quickshell bar ships on ryven-kunzite and ryven-sericea only." >&2
+        exit 1
+    fi
+    systemctl --user restart quickshell.service
+    echo "Bar restarted. Logs: journalctl --user -u quickshell -n 50"

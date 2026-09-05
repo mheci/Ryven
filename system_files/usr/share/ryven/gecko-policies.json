@@ -1,0 +1,1117 @@
+{
+  "policies": {
+    "AIControls": {
+      "Default": { "Value": "blocked" },
+      "Translations": { "Value": "blocked" },
+      "PDFAltText": { "Value": "blocked" },
+      "SmartTabGroups": { "Value": "blocked" },
+      "LinkPreviewKeyPoints": { "Value": "blocked" },
+      "SidebarChatbot": { "Value": "blocked" },
+      "SmartWindow": { "Value": "blocked" }
+    },
+    "AIChatbot": {
+      "Providers": {
+        "BuiltIn": {
+          "Anthropic Claude": false,
+          "ChatGPT": false,
+          "Copilot": false,
+          "Google Gemini": false,
+          "HuggingChat": false,
+          "Le Chat Mistral": false,
+          "localhost": false
+        }
+      },
+      "Prompts": {
+        "Enabled": false
+      }
+    },
+    "AllowFileSelectionDialogs": true,
+    "AppAutoUpdate": false,
+    "BackgroundAppOff": true,
+    "HardwareAcceleration": true,
+    "AutofillAddressEnabled": false,
+    "AutofillCreditCardEnabled": false,
+    "BrowserDataBackup": {
+      "AllowBackup": false,
+      "AllowRestore": false
+    },
+    "CaptivePortal": false,
+    "Certificates": {
+      "ImportEnterpriseRoots": false
+    },
+    "ContentAnalysis": {
+      "Enabled": false,
+      "DefaultResult": 0,
+      "TimeoutResult": 0,
+      "ShowBlockedResult": true
+    },
+    "Cookies": {
+      "Behavior": "reject-tracker-and-partition-foreign",
+      "BehaviorPrivateBrowsing": "reject-tracker-and-partition-foreign"
+    },
+    "DisableDeveloperTools": false,
+    "DisableEncryptedClientHello": false,
+    "DisableFeedbackCommands": true,
+    "DisableFirefoxAccounts": true,
+    "DisableFirefoxScreenshots": true,
+    "DisableFirefoxStudies": true,
+    "DisableForgetButton": true,
+    "DisableFormHistory": true,
+    "DisableMasterPasswordCreation": true,
+    "DisablePasswordReveal": true,
+    "DisableProfileImport": true,
+    "DisableProfileRefresh": true,
+    "DisableRemoteImprovements": true,
+    "DisableSafeMode": true,
+    "DisableSecurityBypass": {
+      "InvalidCertificate": true,
+      "SafeBrowsing": true
+    },
+    "DisableSetDesktopBackground": true,
+    "DisableSystemAddonUpdate": true,
+    "DisableTelemetry": true,
+    "DisplayBookmarksToolbar": "always",
+    "DisplayMenuBar": "never",
+    "DNSOverHTTPS": {
+      "Enabled": true,
+      "Fallback": false,
+      "ProviderURL": "https://cloudflare-dns.com/dns-query"
+    },
+    "DontCheckDefaultBrowser": true,
+    "EnableTrackingProtection": {
+      "Value": true,
+      "Cryptomining": true,
+      "Fingerprinting": true,
+      "EmailTracking": true,
+      "SuspectedFingerprinting": true,
+      "BaselineExceptions": true,
+      "ConvenienceExceptions": false,
+      "Category": "strict"
+    },
+    "ExtensionSettings": {
+      "*": {
+        "restricted_domains": [],
+        "private_browsing": true,
+        "default_area": "menupanel"
+      },
+      "firefox-monitor@mozilla.org": {
+        "installation_mode": "blocked",
+        "blocked_install_message": "Firefox Monitor disabled via policy"
+      },
+      "uBlock0@raymondhill.net": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi",
+        "default_area": "menupanel",
+        "private_browsing": true,
+        "restricted_domains": []
+      },
+      "{446900e4-71c2-419f-a6a7-df9c091e268b}": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi",
+        "default_area": "navbar",
+        "private_browsing": true,
+        "restricted_domains": []
+      },
+      "keepassxc-browser@keepassxc.org": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/keepassxc-browser/latest.xpi",
+        "default_area": "navbar",
+        "private_browsing": true,
+        "restricted_domains": []
+      },
+      "{6c00218c-707a-4977-84cf-36df1cef310f}": {
+        "installation_mode": "blocked",
+        "blocked_install_message": "Port Authority removed via policy"
+      },
+      "{aecec67f-0d10-4fa7-b7c7-609a2db280cf}": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/violentmonkey/latest.xpi",
+        "default_area": "navbar",
+        "private_browsing": true,
+        "restricted_domains": []
+      },
+      "{2e5ff8c8-32fe-46d0-9fc8-6b8986621f3c}": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/search_by_image/latest.xpi",
+        "default_area": "menupanel",
+        "private_browsing": true,
+        "restricted_domains": []
+      },
+      "@contain-facebook": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/facebook-container/latest.xpi",
+        "default_area": "menupanel",
+        "private_browsing": true,
+        "restricted_domains": []
+      },
+      "CookieAutoDelete@kennydo.com": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/cookie-autodelete/latest.xpi",
+        "default_area": "navbar",
+        "private_browsing": true,
+        "restricted_domains": []
+      },
+      "gdpr@cavi.au.dk": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/consent-o-matic/latest.xpi",
+        "default_area": "menupanel",
+        "private_browsing": true,
+        "restricted_domains": []
+      },
+      "@testpilot-containers": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/multi-account-containers/latest.xpi",
+        "default_area": "menupanel",
+        "private_browsing": true,
+        "restricted_domains": []
+      },
+      "{b86e4813-687a-43e6-ab65-0bde4ab75758}": {
+        "installation_mode": "blocked",
+        "blocked_install_message": "LocalCDN removed via policy"
+      },
+      "qwacky@store-v1.0.1": {
+        "installation_mode": "normal_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/qwacky/latest.xpi",
+        "default_area": "menupanel",
+        "private_browsing": true,
+        "restricted_domains": []
+      }
+    },
+    "ExtensionUpdate": true,
+    "FirefoxHome": {
+      "Highlights": false,
+      "Pocket": false,
+      "Search": false,
+      "Snippets": false,
+      "SponsoredPocket": false,
+      "SponsoredStories": false,
+      "SponsoredTopSites": false,
+      "Stories": false,
+      "TopSites": false,
+      "Weather": false
+    },
+    "FirefoxSuggest": {
+      "ImproveSuggest": false,
+      "SponsoredSuggestions": false,
+      "WebSuggestions": false
+    },
+    "Homepage": {
+      "URL": "about:about",
+      "StartPage": "previous-session"
+    },
+    "HttpAllowlist": [],
+    "HttpsOnlyMode": "force_enabled",
+    "IPProtectionAvailable": false,
+    "NetworkPrediction": false,
+    "NewTabPage": "about:about",
+    "NoDefaultBookmarks": true,
+    "OfferToSaveLogins": false,
+    "PasswordManagerEnabled": false,
+    "PictureInPicture": {
+      "Enabled": false
+    },
+    "PDFjs": {
+      "Enabled": true,
+      "EnablePermissions": true
+    },
+    "Permissions": {
+      "Autoplay": {
+        "Default": "block-audio-video",
+        "Allow": [
+          "https://anysex.com",
+          "https://anyporn.com",
+          "https://app.gather.town",
+          "https://app.plex.tv",
+          "https://asstr.org",
+          "https://bandcamp.com",
+          "https://bongacams.com",
+          "https://brunoymaria.com",
+          "https://cam4.com",
+          "https://camsoda.com",
+          "https://chaturbate.com",
+          "https://clips4sale.com",
+          "https://danbooru.donmai.us",
+          "https://daftsex.com",
+          "https://deepswaps.ai",
+          "https://discord.com",
+          "https://efukt.com",
+          "https://e-hentai.org",
+          "https://eporner.com",
+          "https://e621.net",
+          "https://exhentai.org",
+          "https://f95zone.to",
+          "https://fapello.com",
+          "https://fansly.com",
+          "https://flirt4free.com",
+          "https://gelbooru.com",
+          "https://gotporn.com",
+          "https://hanime.tv",
+          "https://hclips.com",
+          "https://hdzog.com",
+          "https://hentaihaven.xxx",
+          "https://hentaidude.com",
+          "https://hentaimama.io",
+          "https://hentaitube.video",
+          "https://hitomi.la",
+          "https://imlive.com",
+          "https://iwara.tv",
+          "https://kick.com",
+          "https://konachan.com",
+          "https://kissmanga.com",
+          "https://luscious.net",
+          "https://manyvids.com",
+          "https://meet.google.com",
+          "https://meet.jit.si",
+          "https://men.com",
+          "https://motherless.com",
+          "https://music.apple.com",
+          "https://music.youtube.com",
+          "https://myfreecams.com",
+          "https://netflix.com",
+          "https://nhentai.net",
+          "https://nsfw247.to",
+          "https://nudostar.com",
+          "https://nyaa.si",
+          "https://onlyfans.com",
+          "https://open.spotify.com",
+          "https://piped.video",
+          "https://play.max.com",
+          "https://porn.com",
+          "https://pornhat.com",
+          "https://pornone.com",
+          "https://pornpen.ai",
+          "https://pornzog.com",
+          "https://porntrex.com",
+          "https://pornwatchers.com",
+          "https://pornxs.com",
+          "https://pornyeah.com",
+          "https://pubity.com",
+          "https://redtube.com",
+          "https://rule34.xxx",
+          "https://rule34video.com",
+          "https://sarahah.com",
+          "https://sashasparrow.com",
+          "https://simply-hentai.com",
+          "https://soundcloud.com",
+          "https://spankbang.com",
+          "https://spankwire.com",
+          "https://sxyprn.com",
+          "https://teams.live.com",
+          "https://teams.microsoft.com",
+          "https://teextube.com",
+          "https://thepiratebay.org",
+          "https://thothub.tv",
+          "https://thumbzilla.com",
+          "https://titsintops.com",
+          "https://tnaflix.com",
+          "https://tprn.org",
+          "https://tsumino.com",
+          "https://tube8.com",
+          "https://tubegalore.com",
+          "https://tubewolf.com",
+          "https://tv.apple.com",
+          "https://upornia.com",
+          "https://vidlox.tv",
+          "https://vikiporn.com",
+          "https://vimeo.com",
+          "https://watchmygf.me",
+          "https://web.skype.com",
+          "https://weebcentral.com",
+          "https://whereby.com",
+          "https://www.bilibili.com",
+          "https://www.bilibili.tv",
+          "https://www.bellesa.co",
+          "https://www.crunchyroll.com",
+          "https://www.dailymotion.com",
+          "https://www.deezer.com",
+          "https://www.disneyplus.com",
+          "https://www.drty.bg",
+          "https://www.emby.media",
+          "https://www.eporner.com",
+          "https://www.funimation.com",
+          "https://www.hulu.com",
+          "https://www.imagefap.com",
+          "https://www.invidious.io",
+          "https://www.jellyfin.org",
+          "https://www.last.fm",
+          "https://www.motherless.com",
+          "https://www.mubi.com",
+          "https://www.netflix.com",
+          "https://www.onfap.com",
+          "https://www.paramountplus.com",
+          "https://www.peacocktv.com",
+          "https://www.primevideo.com",
+          "https://www.pornhat.com",
+          "https://www.pornicom.com",
+          "https://www.porntopic.com",
+          "https://www.pornhub.com",
+          "https://www.redtube.com",
+          "https://www.sex3.com",
+          "https://www.sextube.com",
+          "https://www.subscribestar.com",
+          "https://www.tidal.com",
+          "https://www.tnaflix.com",
+          "https://www.twitch.tv",
+          "https://www.xhamster.com",
+          "https://www.xnxx.com",
+          "https://www.xvideos.com",
+          "https://www.youjizz.com",
+          "https://www.youporn.com",
+          "https://www.yts.mx",
+          "https://www.zbporn.com",
+          "https://xhamster.com",
+          "https://xhit.com",
+          "https://xnxx.com",
+          "https://xnxx2.tv",
+          "https://xozilla.com",
+          "https://xtits.com",
+          "https://xvideos.com",
+          "https://xxxymovies.com",
+          "https://yewtu.be",
+          "https://youjizz.com",
+          "https://youporn.com",
+          "https://yporn.tv",
+          "https://yts.mx",
+          "https://zbporn.com",
+          "https://zoig.com"
+        ]
+      },
+      "Camera": {
+        "BlockNewRequests": true,
+        "Allow": [
+          "https://app.element.io",
+          "https://app.gather.town",
+          "https://app.zoom.us",
+          "https://around.co",
+          "https://browserleaks.com",
+          "https://chaturbate.com",
+          "https://discord.com",
+          "https://facebook.com",
+          "https://get.krisp.ai",
+          "https://go.skype.com",
+          "https://gotomeeting.com",
+          "https://hubs.mozilla.com",
+          "https://instagram.com",
+          "https://meet.google.com",
+          "https://meet.jit.si",
+          "https://myspace.com",
+          "https://ome.tv",
+          "https://omglela.com",
+          "https://omlechat.com",
+          "https://recordrtc.org",
+          "https://sessionize.com",
+          "https://signal.org",
+          "https://sky.gehackt.de",
+          "https://spatial.io",
+          "https://teams.live.com",
+          "https://teams.microsoft.com",
+          "https://tiktok.com",
+          "https://twitch.tv",
+          "https://vdo.ninja",
+          "https://vimeo.com",
+          "https://web.skype.com",
+          "https://webrtc.github.io",
+          "https://web.whatsapp.com",
+          "https://whereby.com",
+          "https://www.google.com",
+          "https://www.gotomeeting.com",
+          "https://www.hopin.com",
+          "https://www.microsoft.com",
+          "https://www.microsoft365.com",
+          "https://www.periscope.tv",
+          "https://www.zoom.us",
+          "https://youtube.com",
+          "https://zoom.us"
+        ]
+      },
+      "Location": {
+        "BlockNewRequests": true,
+        "Allow": [
+          "https://airbnb.com",
+          "https://apps.apple.com",
+          "https://booking.com",
+          "https://citymapper.com",
+          "https://expedia.com",
+          "https://getpocket.com",
+          "https://github.com",
+          "https://google.com",
+          "https://hotels.com",
+          "https://huggingface.co",
+          "https://instagram.com",
+          "https://kayak.com",
+          "https://lastfm.com",
+          "https://linkedin.com",
+          "https://lyft.com",
+          "https://mapquest.com",
+          "https://moovitapp.com",
+          "https://open.spotify.com",
+          "https://openstreetmap.org",
+          "https://reddit.com",
+          "https://rewards.grubhub.com",
+          "https://rome2rio.com",
+          "https://skyscanner.com",
+          "https://snapchat.com",
+          "https://tiktok.com",
+          "https://tripadvisor.com",
+          "https://twitch.tv",
+          "https://uber.com",
+          "https://ubereats.com",
+          "https://waze.com",
+          "https://weather.com",
+          "https://www.accuweather.com",
+          "https://www.apple.com",
+          "https://www.craigslist.org",
+          "https://www.doordash.com",
+          "https://www.facebook.com",
+          "https://www.google.com",
+          "https://www.grubhub.com",
+          "https://www.here.com",
+          "https://www.instacart.com",
+          "https://www.latlong.net",
+          "https://www.linkedin.com",
+          "https://www.nestoria.co.uk",
+          "https://www.postmates.com",
+          "https://www.reddit.com",
+          "https://www.rei.com",
+          "https://www.target.com",
+          "https://www.timeanddate.com",
+          "https://www.tinder.com",
+          "https://www.transitapp.com",
+          "https://www.uber.com",
+          "https://www.weather.com",
+          "https://www.whosnext.com",
+          "https://www.yelp.com",
+          "https://www.zillow.com",
+          "https://yelp.com",
+          "https://zillow.com"
+        ]
+      },
+      "Microphone": {
+        "BlockNewRequests": true,
+        "Allow": [
+          "https://app.element.io",
+          "https://app.gather.town",
+          "https://app.zoom.us",
+          "https://around.co",
+          "https://browserleaks.com",
+          "https://chaturbate.com",
+          "https://cleanvoice.ai",
+          "https://descript.com",
+          "https://dictation.io",
+          "https://discord.com",
+          "https://fireflies.ai",
+          "https://get.krisp.ai",
+          "https://go.skype.com",
+          "https://gotomeeting.com",
+          "https://grain.com",
+          "https://hubs.mozilla.com",
+          "https://instagram.com",
+          "https://krisp.ai",
+          "https://lalal.ai",
+          "https://meet.google.com",
+          "https://meet.jit.si",
+          "https://mic-test.com",
+          "https://myspace.com",
+          "https://obisidian.md",
+          "https://obsidian.md",
+          "https://ome.tv",
+          "https://omlechat.com",
+          "https://online-voice-recorder.com",
+          "https://otter.ai",
+          "https://recordrtc.org",
+          "https://speakpipe.com",
+          "https://spatial.io",
+          "https://teams.live.com",
+          "https://teams.microsoft.com",
+          "https://tiktok.com",
+          "https://twitch.tv",
+          "https://vdo.ninja",
+          "https://vimeo.com",
+          "https://voicemaker.in",
+          "https://vocaroo.com",
+          "https://web.skype.com",
+          "https://webrtc.github.io",
+          "https://web.whatsapp.com",
+          "https://whereby.com",
+          "https://www.google.com",
+          "https://www.gotomeeting.com",
+          "https://www.hopin.com",
+          "https://www.microsoft.com",
+          "https://www.microsoft365.com",
+          "https://www.onlinemic.com",
+          "https://www.periscope.tv",
+          "https://www.tactiq.io",
+          "https://www.zoom.us",
+          "https://youtube.com",
+          "https://zoom.us"
+        ]
+      },
+      "Notifications": {
+        "Default": "block",
+        "BlockNewRequests": true,
+        "Block": [
+          "https://app.element.io",
+          "https://app.gather.town",
+          "https://app.slack.com",
+          "https://calendar.google.com",
+          "https://circleback.com",
+          "https://discord.com",
+          "https://docs.github.com",
+          "https://drive.google.com",
+          "https://fireflies.ai",
+          "https://get.krisp.ai",
+          "https://github.com",
+          "https://gitlab.com",
+          "https://grain.com",
+          "https://keybase.io",
+          "https://keep.google.com",
+          "https://mail.google.com",
+          "https://mail.proton.me",
+          "https://matrix.org",
+          "https://mattermost.com",
+          "https://meet.google.com",
+          "https://notion.so",
+          "https://outlook.live.com",
+          "https://outlook.office365.com",
+          "https://pushbullet.com",
+          "https://reddit.com",
+          "https://rocket.chat",
+          "https://signal.org",
+          "https://simplex.chat",
+          "https://spotify.com",
+          "https://studio.youtube.com",
+          "https://teams.live.com",
+          "https://teams.microsoft.com",
+          "https://telegram.org",
+          "https://trello.com",
+          "https://twitch.tv",
+          "https://web.whatsapp.com",
+          "https://wire.com",
+          "https://www.facebook.com",
+          "https://www.getmailspring.com",
+          "https://www.linkedin.com",
+          "https://www.slack.com",
+          "https://www.trello.com",
+          "https://www.twitter.com",
+          "https://www.youtube.com",
+          "https://zulip.com"
+        ]
+      },
+      "ScreenSharing": {
+        "BlockNewRequests": true,
+        "Allow": [
+          "https://app.element.io",
+          "https://app.gather.town",
+          "https://app.zoom.us",
+          "https://around.co",
+          "https://discord.com",
+          "https://facebook.com",
+          "https://get.krisp.ai",
+          "https://go.skype.com",
+          "https://gotomeeting.com",
+          "https://hubs.mozilla.com",
+          "https://instagram.com",
+          "https://meet.google.com",
+          "https://meet.jit.si",
+          "https://recordrtc.org",
+          "https://teams.live.com",
+          "https://teams.microsoft.com",
+          "https://vdo.ninja",
+          "https://vimeo.com",
+          "https://web.skype.com",
+          "https://webrtc.github.io",
+          "https://whereby.com",
+          "https://www.gotomeeting.com",
+          "https://www.hopin.com",
+          "https://www.zoom.us",
+          "https://youtube.com",
+          "https://zoom.us"
+        ]
+      },
+      "VirtualReality": {
+        "BlockNewRequests": true,
+        "Allow": [
+          "https://aframe.io",
+          "https://framevr.io",
+          "https://glitch.com",
+          "https://hubs.mozilla.com",
+          "https://immersive-web.github.io",
+          "https://janusxr.com",
+          "https://neurocity.de",
+          "https://sketchfab.com",
+          "https://spatial.io",
+          "https://vrchat.com",
+          "https://webxr.io",
+          "https://www.highfidelity.com",
+          "https://www.mozilla.org",
+          "https://www.oculus.com",
+          "https://www.vrdirectories.com"
+        ]
+      }
+    },
+    "PopupBlocking": {
+      "Default": true
+    },
+    "PostQuantumKeyAgreementEnabled": true,
+    "PrintingEnabled": false,
+    "PrivateBrowsingModeAvailability": 0,
+    "RequestedLocales": ["en-US"],
+    "SanitizeOnShutdown": {
+      "Cache": false,
+      "Cookies": false,
+      "FormData": false,
+      "History": false,
+      "Sessions": false,
+      "SiteSettings": false
+    },
+    "SearchEngines": {
+      "Default": "Brave Search",
+      "PreventInstalls": false,
+      "Remove": ["Amazon.com", "Bing", "eBay", "Twitter", "Wikipedia (en)"],
+      "Add": [
+        {
+          "Name": "Brave Search",
+          "URLTemplate": "https://search.brave.com/search?q={searchTerms}&source=web&safesearch=off&ai_answers=off&summary=off&local_results=off&spellcheck=1&goggles_id=https%3A%2F%2Fgist.githubusercontent.com%2Fmheci%2F861e047269f5078200178e2cae621f32%2Fraw%2Fgoggles.txt",
+          "Method": "GET",
+          "Alias": ":brave",
+          "IconURL": "https://cdn.search.brave.com/serp/v2/_app/immutable/assets/favicon.BNb-3wI-.ico",
+          "SuggestURLTemplate": "https://search.brave.com/api/suggest?q={searchTerms}"
+        },
+        {
+          "Name": "DuckDuckGo",
+          "URLTemplate": "https://duckduckgo.com/?q={searchTerms}&kp=-2&kl=wt-wt&kz=-1&kax=-1",
+          "Method": "GET",
+          "Alias": ":ddg",
+          "IconURL": "https://duckduckgo.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "DuckDuckGo NoAI",
+          "URLTemplate": "https://noai.duckduckgo.com/?q={searchTerms}&kp=-2&kl=wt-wt&kz=-1&kc=1&kav=1&kaf=1&kf=fw&kac=1&kh=1&kd=1&kg=p&kae=d&ks=l&kw=n&km=l&k7=282c34&k8=abb2bf&k9=61afef&kf1=c678dd",
+          "Method": "GET",
+          "Alias": ":nddg",
+          "IconURL": "https://duckduckgo.com/favicon.ico",
+          "SuggestURLTemplate": "https://noai.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Google",
+          "URLTemplate": "https://www.google.com/search?q={searchTerms}&safe=off&pws=0&udm=14&hl=en&gl=us",
+          "Method": "GET",
+          "Alias": ":g",
+          "IconURL": "https://www.google.com/favicon.ico",
+          "SuggestURLTemplate": "https://www.google.com/complete/search?client=gws&q={searchTerms}"
+        },
+        {
+          "Name": "Bing",
+          "URLTemplate": "https://www.bing.com/search?q={searchTerms}&adlt=off&mkt=en-US",
+          "Method": "GET",
+          "Alias": ":b",
+          "IconURL": "https://www.bing.com/favicon.ico",
+          "SuggestURLTemplate": "https://api.bing.com/osjson.aspx?query={searchTerms}"
+        },
+        {
+          "Name": "Startpage",
+          "URLTemplate": "https://www.startpage.com/sp/search?query={searchTerms}&cat=web&abp=1&language=english",
+          "Method": "GET",
+          "Alias": ":sp",
+          "IconURL": "https://www.startpage.com/favicon.ico",
+          "SuggestURLTemplate": "https://www.startpage.com/suggestions?q={searchTerms}&segment=startpage.udog&lui=english"
+        },
+        {
+          "Name": "Google Images",
+          "URLTemplate": "https://www.google.com/search?tbm=isch&q={searchTerms}&safe=off&pws=0&hl=en&gl=us",
+          "Method": "GET",
+          "Alias": ":img",
+          "IconURL": "https://www.google.com/favicon.ico",
+          "SuggestURLTemplate": "https://www.google.com/complete/search?client=gws&q={searchTerms}"
+        },
+        {
+          "Name": "Google Translate",
+          "URLTemplate": "https://translate.google.com/?sl=auto&tl=en&text={searchTerms}&op=translate",
+          "Method": "GET",
+          "Alias": ":tr",
+          "IconURL": "https://translate.google.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "YouTube",
+          "URLTemplate": "https://www.youtube.com/results?search_query={searchTerms}",
+          "Method": "GET",
+          "Alias": ":yt",
+          "IconURL": "https://www.youtube.com/favicon.ico",
+          "SuggestURLTemplate": "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q={searchTerms}"
+        },
+        {
+          "Name": "Piped",
+          "URLTemplate": "https://piped.video/results?search_query={searchTerms}&region=us&hl=en",
+          "Method": "GET",
+          "Alias": ":ytp",
+          "IconURL": "https://piped.video/favicon.ico",
+          "SuggestURLTemplate": "https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q={searchTerms}"
+        },
+        {
+          "Name": "Twitch",
+          "URLTemplate": "https://www.twitch.tv/search?term={searchTerms}",
+          "Method": "GET",
+          "Alias": ":tw",
+          "IconURL": "https://www.twitch.tv/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Spotify",
+          "URLTemplate": "https://open.spotify.com/search/{searchTerms}",
+          "Method": "GET",
+          "Alias": ":spot",
+          "IconURL": "https://open.spotify.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "SoundCloud",
+          "URLTemplate": "https://soundcloud.com/search?q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":sc",
+          "IconURL": "https://soundcloud.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Amazon",
+          "URLTemplate": "https://www.amazon.com/s?k={searchTerms}&i=aps&s=relevance",
+          "Method": "GET",
+          "Alias": ":amz",
+          "IconURL": "https://www.amazon.com/favicon.ico",
+          "SuggestURLTemplate": "https://completion.amazon.com/api/2017/suggestions?mid=ATVPDKIKX0DER&alias=aps&prefix={searchTerms}"
+        },
+        {
+          "Name": "Reddit",
+          "URLTemplate": "https://www.reddit.com/search/?q={searchTerms}&include_over_18=on&sort=relevance",
+          "Method": "GET",
+          "Alias": ":r",
+          "IconURL": "https://www.reddit.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Wikipedia",
+          "URLTemplate": "https://en.wikipedia.org/w/index.php?search={searchTerms}&ns0=1",
+          "Method": "GET",
+          "Alias": ":wiki",
+          "IconURL": "https://en.wikipedia.org/favicon.ico",
+          "SuggestURLTemplate": "https://en.wikipedia.org/w/api.php?action=opensearch&search={searchTerms}"
+        },
+        {
+          "Name": "Wayback Machine",
+          "URLTemplate": "https://web.archive.org/web/*/{searchTerms}",
+          "Method": "GET",
+          "Alias": ":wb",
+          "IconURL": "https://archive.org/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Have I Been Pwned",
+          "URLTemplate": "https://haveibeenpwned.com/unifiedsearch/{searchTerms}",
+          "Method": "GET",
+          "Alias": ":hibp",
+          "IconURL": "https://haveibeenpwned.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "IMDb",
+          "URLTemplate": "https://www.imdb.com/find/?q={searchTerms}&s=tt",
+          "Method": "GET",
+          "Alias": ":imdb",
+          "IconURL": "https://www.imdb.com/favicon.ico",
+          "SuggestURLTemplate": "https://v3.sg.media-imdb.com/suggestion/x/{searchTerms}.json"
+        },
+        {
+          "Name": "TMDB",
+          "URLTemplate": "https://www.themoviedb.org/search?query={searchTerms}&include_adult=false",
+          "Method": "GET",
+          "Alias": ":tmdb",
+          "IconURL": "https://www.themoviedb.org/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Trakt",
+          "URLTemplate": "https://trakt.tv/search?query={searchTerms}",
+          "Method": "GET",
+          "Alias": ":trakt",
+          "IconURL": "https://trakt.tv/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Letterboxd",
+          "URLTemplate": "https://letterboxd.com/search/{searchTerms}/",
+          "Method": "GET",
+          "Alias": ":lb",
+          "IconURL": "https://letterboxd.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "SteamDB",
+          "URLTemplate": "https://steamdb.info/search/?q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":sdb",
+          "IconURL": "https://steamdb.info/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "ProtonDB",
+          "URLTemplate": "https://www.protondb.com/search?q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":pdb",
+          "IconURL": "https://www.protondb.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Speedrun.com",
+          "URLTemplate": "https://www.speedrun.com/search?q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":srcom",
+          "IconURL": "https://www.speedrun.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "GitHub",
+          "URLTemplate": "https://github.com/search?q={searchTerms}&type=repositories&s=best-match&o=desc",
+          "Method": "GET",
+          "Alias": ":gh",
+          "IconURL": "https://github.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Stack Overflow",
+          "URLTemplate": "https://stackoverflow.com/search?q={searchTerms}&tab=relevance",
+          "Method": "GET",
+          "Alias": ":so",
+          "IconURL": "https://stackoverflow.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "MDN Web Docs",
+          "URLTemplate": "https://developer.mozilla.org/en-US/search?q={searchTerms}&locale=en-US",
+          "Method": "GET",
+          "Alias": ":mdn",
+          "IconURL": "https://developer.mozilla.org/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "npm",
+          "URLTemplate": "https://www.npmjs.com/search?q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":npm",
+          "IconURL": "https://www.npmjs.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "PyPI",
+          "URLTemplate": "https://pypi.org/search/?q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":pypi",
+          "IconURL": "https://pypi.org/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "crates.io",
+          "URLTemplate": "https://crates.io/search?q={searchTerms}&sort=relevance",
+          "Method": "GET",
+          "Alias": ":crate",
+          "IconURL": "https://crates.io/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Docker Hub",
+          "URLTemplate": "https://hub.docker.com/search?q={searchTerms}&source=hub",
+          "Method": "GET",
+          "Alias": ":docker",
+          "IconURL": "https://hub.docker.com/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "NixOS Packages",
+          "URLTemplate": "https://search.nixos.org/packages?channel=unstable&query={searchTerms}",
+          "Method": "GET",
+          "Alias": ":nix",
+          "IconURL": "https://search.nixos.org/favicon.png",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "NixOS Options",
+          "URLTemplate": "https://search.nixos.org/options?channel=unstable&query={searchTerms}",
+          "Method": "GET",
+          "Alias": ":nixopt",
+          "IconURL": "https://search.nixos.org/favicon.png",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "Flathub",
+          "URLTemplate": "https://flathub.org/apps/search?q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":flat",
+          "IconURL": "https://flathub.org/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "YTS",
+          "URLTemplate": "https://yts.mx/browse-movies/{searchTerms}",
+          "Method": "GET",
+          "Alias": ":yts",
+          "IconURL": "https://yts.mx/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "1337x",
+          "URLTemplate": "https://1337x.to/search/{searchTerms}/1/",
+          "Method": "GET",
+          "Alias": ":1337",
+          "IconURL": "https://1337x.to/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "NYAA",
+          "URLTemplate": "https://nyaa.si/?f=0&c=0_0&q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":nyaa",
+          "IconURL": "https://nyaa.si/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "The Pirate Bay",
+          "URLTemplate": "https://thepiratebay.org/search.php?q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":tpb",
+          "IconURL": "https://thepiratebay.org/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        },
+        {
+          "Name": "EXT Torrents",
+          "URLTemplate": "https://ext.to/search/?q={searchTerms}",
+          "Method": "GET",
+          "Alias": ":ext",
+          "IconURL": "https://ext.to/favicon.ico",
+          "SuggestURLTemplate": "https://ac.duckduckgo.com/ac/?q={searchTerms}&type=list"
+        }
+      ]
+    },
+    "SearchSuggestEnabled": true,
+    "ShowHomeButton": false,
+    "SkipTermsOfUse": true,
+    "SSLVersionMin": "tls1.2",
+    "Sync": {
+      "Enabled": false
+    },
+    "UserMessaging": {
+      "ExtensionRecommendations": false,
+      "FeatureRecommendations": false,
+      "FirefoxLabs": false,
+      "MoreFromMozilla": false,
+      "SkipOnboarding": true,
+      "SponsoredDataUpdates": false,
+      "UrlbarInterventions": false
+    },
+    "VisualSearchEnabled": false,
+    "Handlers": {
+      "schemes": {
+        "magnet": { "action": "useSystemDefault", "ask": false },
+        "torrent": { "action": "useSystemDefault", "ask": false }
+      }
+    },
+    "AutoLaunchProtocolsFromOrigins": [
+      {
+        "protocol": "discord",
+        "allowed_origins": ["https://discord.com"]
+      },
+      {
+        "protocol": "element",
+        "allowed_origins": ["https://app.element.io"]
+      },
+      {
+        "protocol": "magnet",
+        "allowed_origins": [
+          "https://1337x.st",
+          "https://1337x.to",
+          "https://animetosho.org",
+          "https://bitsearch.to",
+          "https://bt4g.org",
+          "https://en.wikipedia.org",
+          "https://ext.to",
+          "https://eztv.re",
+          "https://fitgirl-repacks.site",
+          "https://github.com",
+          "https://idope.se",
+          "https://kickasstorrents.to",
+          "https://limetorrents.lol",
+          "https://nyaa.land",
+          "https://nyaa.si",
+          "https://snowfl.com",
+          "https://sukebei.nyaa.si",
+          "https://thepiratebay.org",
+          "https://thepiratebay10.org",
+          "https://torlock.com",
+          "https://torrentgalaxy.to",
+          "https://web.archive.org",
+          "https://x1337x.ws",
+          "https://yts.mx"
+        ]
+      },
+      {
+        "protocol": "mailto",
+        "allowed_origins": [
+          "https://app.fastmail.com",
+          "https://app.hey.com",
+          "https://app.tuta.com",
+          "https://mail.google.com",
+          "https://mail.proton.me",
+          "https://mail.zoho.com",
+          "https://outlook.live.com",
+          "https://outlook.office365.com",
+          "https://proton.me",
+          "https://www.fastmail.com",
+          "https://www.zoho.com"
+        ]
+      },
+      {
+        "protocol": "msteams",
+        "allowed_origins": ["https://teams.live.com", "https://teams.microsoft.com"]
+      },
+      {
+        "protocol": "obsidian",
+        "allowed_origins": ["https://obsidian.md", "https://publish.obsidian.md"]
+      },
+      {
+        "protocol": "slack",
+        "allowed_origins": ["https://app.slack.com"]
+      },
+      {
+        "protocol": "spotify",
+        "allowed_origins": ["https://open.spotify.com"]
+      },
+      {
+        "protocol": "steam",
+        "allowed_origins": [
+          "https://steamcommunity.com",
+          "https://steamdb.info",
+          "https://store.steampowered.com",
+          "https://www.igdb.com",
+          "https://www.pcgamingwiki.com"
+        ]
+      },
+      {
+        "protocol": "tg",
+        "allowed_origins": ["https://t.me", "https://telegram.me", "https://web.telegram.org"]
+      },
+      {
+        "protocol": "vscode",
+        "allowed_origins": [
+          "https://github.com",
+          "https://github.dev",
+          "https://gitlab.com",
+          "https://insiders.vscode.dev",
+          "https://vscode.dev"
+        ]
+      },
+      {
+        "protocol": "zoommtg",
+        "allowed_origins": ["https://app.zoom.us", "https://zoom.us"]
+      }
+    ]
+  }
+}

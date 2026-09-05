@@ -1,0 +1,11 @@
+[Unit]
+Description=Watch the Ryven bar's Quickshell config for changes
+
+[Path]
+PathChangedGlob=%h/.config/quickshell/*.qml
+PathChangedGlob=%h/.config/quickshell/ryven/*.qml
+PathChangedGlob=%h/.config/quickshell/ryven/extensions/*.qml
+Unit=quickshell-reload.service
+
+[Install]
+WantedBy=default.target

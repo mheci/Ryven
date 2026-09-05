@@ -1,0 +1,37 @@
+{
+  "id": "dusk",
+  "name": "Ryven Dusk",
+  "kde_scheme": "Ryven Dusk",
+  "source": "https://coolors.co/palette/22223b-4a4e69-9a8c98-c9ada7-f2e9e4",
+  "palette": [
+    "22223b",
+    "4a4e69",
+    "9a8c98",
+    "c9ada7",
+    "f2e9e4"
+  ],
+  "tokens": {
+    "bg0": "22223b",
+    "bg1": "4a4e69",
+    "bg2": "9a8c98",
+    "accent": "c9ada7",
+    "fg": "f2e9e4",
+    "negative": "d98a95",
+    "neutral": "d9b58c",
+    "positive": "9fc4a8",
+    "window_bg": "22223b",
+    "window_bg_alt": "4a4e69",
+    "view_bg": "#1d1d32",
+    "view_alt": "#363852",
+    "btn_bg": "4a4e69",
+    "btn_hover": "#726d80",
+    "selection": "9a8c98",
+    "selection_alt": "#b0a3ab",
+    "tooltip_bg": "#3c3f59",
+    "fg_dim": "#948f98",
+    "fg_bright": "#f4ece7",
+    "active_text": "#d7c2bc",
+    "link": "#d3bcb6",
+    "visited": "#8f7c81"
+  }
+}

@@ -1,0 +1,2 @@
+# NTSync character device: any seat user can use Proton NTSync.
+KERNEL=="ntsync", MODE="0666", TAG+="uaccess", OPTIONS+="static_node=ntsync"

@@ -1,0 +1,7 @@
+# Ryven system-wide default browser: Firefox RPM (always latest via Fedora).
+# Users can override in their desktop's Default Applications settings.
+[Default Applications]
+x-scheme-handler/http=firefox.desktop
+x-scheme-handler/https=firefox.desktop
+text/html=firefox.desktop
+application/xhtml+xml=firefox.desktop

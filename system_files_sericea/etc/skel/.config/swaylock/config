@@ -1,0 +1,20 @@
+# Ryven Navy (coolors 0d1b2a-1b263b-415a77-778da9-e0e1dd)
+# swaylock colors: #RRGGBBAA (alpha last).
+font = Inter
+font-size = 16
+hide-cursor = true
+show-failed-attempts = yes
+
+bg-color = #0d1b2ae6
+line-color = #415a7780
+line-width = 4
+ring-color = #778da9
+ring-width = 4
+separator-height = 4
+
+text-color = #e0e1dd
+text-verifying-color = #84c9a3
+text-error-color = #d98a8a
+text-capslock-color = #d4b878
+keyhl-color = #778da940
+bs-hl-color = #d4b87840

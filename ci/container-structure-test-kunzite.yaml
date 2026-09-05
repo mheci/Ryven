@@ -1,0 +1,92 @@
+schemaVersion: "2.0.0"
+fileExistenceTests:
+  - name: hyprland config
+    path: /usr/share/hypr/hyprland.conf
+    shouldExist: true
+  - name: greetd
+    path: /etc/greetd/config.toml
+    shouldExist: true
+  - name: nvidia kargs
+    path: /usr/lib/bootc/kargs.d/00-nvidia.toml
+    shouldExist: true
+  - name: firefox (upstream tarball)
+    path: /opt/firefox/firefox
+    shouldExist: true
+    isExecutableBy: owner
+  - name: zen (upstream tarball)
+    path: /opt/zen/zen
+    shouldExist: true
+    isExecutableBy: owner
+  - name: oo7 daemon
+    path: /usr/bin/oo7-daemon
+    shouldExist: true
+    isExecutableBy: owner
+  - name: pam_oo7
+    path: /usr/lib/security/pam_oo7.so
+    shouldExist: true
+  - name: pkcon
+    path: /usr/bin/pkcon
+    shouldExist: true
+    isExecutableBy: owner
+  - name: pi coding agent
+    path: /usr/bin/pi
+    shouldExist: true
+  - name: pi global AGENTS.md skeleton
+    path: /etc/skel/.pi/agent/AGENTS.md
+    shouldExist: true
+  - name: pi quickshell-bar skill skeleton
+    path: /etc/skel/.pi/agent/skills/ryven-quickshell-bar/SKILL.md
+    shouldExist: true
+  - name: quickshell bar module
+    path: /etc/xdg/quickshell/ryven/Bar.qml
+    shouldExist: true
+  - name: quickshell extensions loader
+    path: /etc/xdg/quickshell/ryven/Extensions.qml
+    shouldExist: true
+  - name: quickshell example extension
+    path: /etc/xdg/quickshell/ryven/extensions/example-hello.qml.off
+    shouldExist: true
+  - name: quickshell agent instructions
+    path: /etc/xdg/quickshell/AGENTS.md
+    shouldExist: true
+  - name: quickshell skel seed
+    path: /etc/skel/.config/quickshell/AGENTS.md
+    shouldExist: true
+  - name: quickshell bar service
+    path: /usr/lib/systemd/user/quickshell.service
+    shouldExist: true
+  - name: quickshell reload service
+    path: /usr/lib/systemd/user/quickshell-reload.service
+    shouldExist: true
+  - name: quickshell reload path unit
+    path: /usr/lib/systemd/user/quickshell-reload.path
+    shouldExist: true
+commandTests:
+  - name: pi runs
+    command: bash
+    args: ["-c", "PI_OFFLINE=1 pi --version"]
+    expectedOutput: ["[0-9]+\\.[0-9]+\\.[0-9]+"]
+  - name: ujust list parses
+    command: ujust
+    args: ["--list"]
+  - name: bar starts as user service
+    command: grep
+    args: ["-q", "systemctl --user restart quickshell.service", "/usr/share/hypr/hyprland.conf"]
+  - name: brave-origin rpm
+    command: rpm
+    args: ["-q", "brave-origin"]
+  - name: hyprland rpm
+    command: rpm
+    args: ["-q", "hyprland"]
+  - name: quickshell rpm
+    command: rpm
+    args: ["-q", "quickshell"]
+  - name: PackageKit rpm
+    command: rpm
+    args: ["-q", "PackageKit"]
+  - name: polkit rpm
+    command: rpm
+    args: ["-q", "polkit"]
+  - name: master layout
+    command: grep
+    args: ["-q", "layout = master", "/usr/share/hypr/hyprland.conf"]

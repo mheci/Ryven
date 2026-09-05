@@ -1,0 +1,11 @@
+[Unit]
+Description=Allow KDE Connect through firewalld (mdns + 1714/tcp)
+Before=firewalld.service NetworkManager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/ryven-kdeconnect-firewall
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

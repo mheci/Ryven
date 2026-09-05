@@ -1,0 +1,11 @@
+<!-- Reduce DRI input latency (Arch wiki Gaming -> Reducing DRI latency):
+     disable vblank synchronization by default. Applies to DRI drivers
+     (Mesa, Nouveau) — e.g. gamescope, Wine OpenGL. The NVIDIA proprietary
+     driver does not read DRI configs; the file is inert for it. -->
+<driconf>
+    <device>
+        <application name="Default">
+            <option name="vblank_mode" value="0" />
+        </application>
+    </device>
+</driconf>

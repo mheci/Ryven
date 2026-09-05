@@ -1,0 +1,9 @@
+# Config for bootc-installer ISO builds (the new Fedora installer).
+# Supported blueprint options for this type: customizations.{fips, group,
+# installer, kernel.append, user}. Kept empty apart from forcing the Web UI
+# so the installer stays fully interactive.
+
+[customizations.kernel]
+# Force the new web-based Anaconda UI on the installer's boot entries. The
+# anaconda-webui package itself is installed in installer/Containerfile.
+append = "inst.webui"

@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# First-boot keyring PAM wiring. Idempotent (exact-line grep guard) and
+# stamped, so re-runs are no-ops. Runs before the greeter can authenticate,
+# on every boot until the stamp exists.
+#
+# All images (oo7 Secret Service keyring, org.freedesktop.secrets):
+#   auth+session pam_oo7.so (auto_start) in every greeter PAM file that
+#   exists (greetd on kunzite/sericea, plasmalogin/sddm on ryven) and in
+#   the TTY login stack unlock the keyring with the login password; the
+#   password module in /etc/pam.d/passwd keeps the login keyring following
+#   `passwd`.
+# Ryven (KDE Plasma) additionally:
+#   auth + session pam_kwallet5.so auto_start kwalletd=/usr/bin/kwalletd6
+#   auto-unlock the default KDE Wallet (kdewallet, blowfish, password =
+#   user password) for KDE-native apps. ksecretd — the KWallet-backed
+#   Secret Service shim — must NEVER be started: oo7 owns the
+#   org.freedesktop.secrets bus name. Legacy deployments wired
+#   kwalletd=/usr/bin/ksecretd; those lines are purged below.
+#   kwallet-pam has no password module, so there is no password sync for
+#   the KDE Wallet itself.
+#
+# Each branch is guarded by its PAM module file, so a branch is inert on
+# images where its module is absent.
+set -euo pipefail
+
+STAMP=/var/lib/ryven/keyring-pam.stamp
+OO7_MODULE=/usr/lib/security/pam_oo7.so
+KWALLET_MODULE=/usr/lib64/security/pam_kwallet5.so
+
+OO7_AUTH='auth      optional                        pam_oo7.so'
+OO7_SESSION='session optional                        pam_oo7.so auto_start'
+OO7_PASSWORD='password optional                        pam_oo7.so'
+KW_AUTH='auth      optional                        pam_kwallet5.so'
+KW_SESSION='session optional                        pam_kwallet5.so auto_start kwalletd=/usr/bin/kwalletd6'
+# TTY login (no display manager) needs force_run per the upstream docs.
+KW_AUTH_TTY='auth      optional                        pam_kwallet5.so force_run'
+KW_SESSION_TTY='session optional                        pam_kwallet5.so auto_start force_run kwalletd=/usr/bin/kwalletd6'
+
+# Append $2 to $1 unless that exact line is already present. A pre-existing
+# differently-formatted line is tolerated: PAM module entries are additive
+# and the modules are idempotent.
+append_line() { # $1=file $2=line
+  local file=$1 line=$2
+  [ -f "$file" ] || return 0
+  if ! grep -qxF "$line" "$file"; then
+    printf '%s\n' "$line" >>"$file"
+  fi
+}
+
+# Purge pre-migration pam_kwallet5 lines that started ksecretd (it would
+# race oo7-daemon for org.freedesktop.secrets). No-op on fresh deploys.
+purge_ksecretd_lines() { # $1=file
+  local file=$1
+  [ -f "$file" ] || return 0
+  if grep -q 'pam_kwallet5\.so.*ksecretd' "$file"; then
+    sed -i '/pam_kwallet5\.so.*ksecretd/d' "$file"
+  fi
+}
+
+if [[ -e ${OO7_MODULE} ]]; then
+  for f in /etc/pam.d/greetd /etc/pam.d/plasmalogin /etc/pam.d/sddm \
+           /etc/pam.d/login; do
+    append_line "${f}" "${OO7_AUTH}"
+    append_line "${f}" "${OO7_SESSION}"
+  done
+  append_line /etc/pam.d/passwd "${OO7_PASSWORD}"
+fi
+
+if [[ -e ${KWALLET_MODULE} ]]; then
+  for f in /etc/pam.d/plasmalogin /etc/pam.d/sddm /etc/pam.d/login; do
+    purge_ksecretd_lines "${f}"
+  done
+  for f in /etc/pam.d/plasmalogin /etc/pam.d/sddm; do
+    append_line "${f}" "${KW_AUTH}"
+    append_line "${f}" "${KW_SESSION}"
+  done
+  append_line /etc/pam.d/login "${KW_AUTH_TTY}"
+  append_line /etc/pam.d/login "${KW_SESSION_TTY}"
+fi
+
+mkdir -p /var/lib/ryven
+touch "${STAMP}"

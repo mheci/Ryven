@@ -1,0 +1,64 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests",
+  ],
+
+  "rebaseWhen": "never",
+  "dependencyDashboard": true,
+
+  // Full auto-upgrade: every Renovate-managed update (major included)
+  // auto-merges once CI is green. automerge.yml gates bot PRs on required
+  // checks, and the weekly scheduled rebuild re-validates the result.
+  "automerge": true,
+  "prHourlyLimit": 0,
+  "prConcurrentLimit": 0,
+  "schedule": ["at any time"],
+
+  "enabledManagers": [
+    "dockerfile",
+    "github-actions",
+    "custom.regex",
+  ],
+
+  // Zero-maintenance policy: the Ryven Containerfiles use floating tags
+  // (e.g. ':latest'), never digest or version pins. Digest pinning is
+  // disabled so Renovate keeps the tags floating.
+  "dockerfile": {
+    "pinDigests": false,
+  },
+
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "bootc-image-builder image in ryven.env",
+      "managerFilePatterns": ["/(^|/)ryven\\.env$/"],
+      "matchStrings": [
+        "BIB_IMAGE=\"(?<depName>quay.io/centos-bootc/bootc-image-builder):(?<currentValue>[^\"]+)\"",
+      ],
+      "datasourceTemplate": "docker",
+    },
+    {
+      "customType": "regex",
+      "description": "container-structure-test release pin in the image workflow",
+      "managerFilePatterns": ["/(^|/)\\.github/workflows/build\\.yml$/"],
+      "matchStrings": ["CST_VER: (?<currentValue>v[0-9.]+)"],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "GoogleContainerTools/container-structure-test",
+    },
+  ],
+
+  "packageRules": [
+    {
+      // Workflow action pins are managed by github-actions digests
+      // (pinGitHubActionDigests above); do not double-manage them as
+      // container digests.
+      "enabled": false,
+      "matchUpdateTypes": ["digest", "pinDigest", "pin"],
+      "matchDepTypes": ["container"],
+      "matchFileNames": [".github/workflows/**.yaml", ".github/workflows/**.yml"],
+    },
+  ],
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Ryven Quickshell bar
+Documentation=file:///etc/xdg/quickshell/AGENTS.md
+
+[Service]
+# Started by the compositor (hyprland.conf: exec-once = systemctl --user
+# restart quickshell.service) so it inherits a live Wayland session; the
+# session environment is imported there first.
+ExecStart=/usr/bin/quickshell
+Restart=always
+RestartSec=1

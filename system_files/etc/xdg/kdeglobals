@@ -1,0 +1,24 @@
+[General]
+ColorScheme=Ryven
+Name=Ryven
+TerminalApplication=konsole
+TerminalService=org.kde.konsole.desktop
+fixed=JetBrains Mono,10,-1,5,50,0,0,0,0,0
+font=Inter,10,-1,5,400,0,0,0,0,0,Regular
+menuFont=Inter,10,-1,5,400,0,0,0,0,0,Regular
+smallestReadableFont=Inter,8,-1,5,400,0,0,0,0,0,Regular
+toolBarFont=Inter,10,-1,5,400,0,0,0,0,0,Regular
+
+[KDE]
+LookAndFeelPackage=org.ryven.desktop
+widgetStyle=Darkly
+SingleClick=false
+
+[Icons]
+Theme=breeze-dark
+
+[WM]
+activeBackground=20,20,20
+activeForeground=216,232,232
+inactiveBackground=16,16,16
+inactiveForeground=122,130,130

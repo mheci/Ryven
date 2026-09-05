@@ -1,0 +1,11 @@
+# mise system config (mise.jdx.dev/configuration.html: "System config:
+# /etc/mise/config.toml"). Freshness per mise.jdx.dev/installing-mise.html:
+# keep the CLI on a recent version. `auto_update true` (the page's
+# `mise settings set auto_update true`, shipped system-wide): before
+# eligible interactive commands mise periodically checks for a newer
+# release, installs it, and re-runs the command with the new binary
+# (interval: auto_update_check_duration). The binary lives in
+# /usr/local/bin (GitHub-release install, persisted to /var), so mise
+# self-updates it in place for root; no COPR stays enabled at rest.
+[settings]
+auto_update = true

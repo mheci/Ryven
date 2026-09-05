@@ -1,0 +1,10 @@
+# zswap: compress RAM before disk swap. lz4 + zsmalloc per the CachyOS wiki
+# zswap guide: lz4 has the lowest compress/decompress latency of the
+# supported algorithms, which keeps reclaim work off the frame-time budget.
+kargs = [
+  "zswap.enabled=1",
+  "zswap.compressor=lz4",
+  "zswap.zpool=zsmalloc",
+  "zswap.max_pool_percent=30",
+  "zswap.shrinker_enabled=1",
+]

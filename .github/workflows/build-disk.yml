@@ -1,0 +1,159 @@
+---
+name: Build disk images
+
+# On-demand/PR VM disk images (qcow2). Installer ISOs are built by
+# build-iso.yml with the new Fedora installer (bootc-installer type); the
+# deprecated anaconda-iso type is no longer used anywhere.
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload-to-s3:
+        description: "Upload to S3"
+        required: false
+        default: false
+        type: boolean
+      platform:
+        required: true
+        type: choice
+        options:
+          - amd64
+          - arm64
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "disk_config/disk.toml"
+      - ".github/workflows/build-disk.yml"
+
+env:
+  IMAGE_NAME: ${{ github.event.repository.name }}
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
+  DEFAULT_TAG: "latest"
+  BIB_IMAGE: "quay.io/centos-bootc/bootc-image-builder:latest"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build disk images
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request'
+    runs-on: ${{ (github.event.inputs.platform || 'amd64') == 'arm64' && 'ubuntu-26.04-arm' || 'ubuntu-26.04' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        disk-type: ["qcow2"]
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+
+    steps:
+      - name: Prepare environment
+        run: |
+          USER_UID=$(id -u)
+          USER_GID=$(id -g)
+          DISK_TYPE=$(echo "${{ matrix.disk-type }}" | tr ' ' '-')
+          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
+          echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
+          echo "DISK_TYPE=${DISK_TYPE}" >> ${GITHUB_ENV}
+          echo "USER_UID=${USER_UID}" >> ${GITHUB_ENV}
+          echo "USER_GID=${USER_GID}" >> ${GITHUB_ENV}
+          echo "PLATFORM=${{ github.event.inputs.platform || 'amd64' }}" >> ${GITHUB_ENV}
+          echo "STAMP=$(date -u -d '${{ github.run_started_at }}' +%Y%m%d)" >> ${GITHUB_ENV}
+
+      - name: Install dependencies
+        if: (github.event.inputs.platform || 'amd64') == 'arm64'
+        run: |
+          set -x
+          sudo apt update -y
+          sudo apt install -y podman qemu-utils xz-utils
+
+      - name: Maximize build space
+        if: (github.event.inputs.platform || 'amd64') != 'arm64'
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
+
+      - name: Install qemu-img and xz
+        if: (github.event.inputs.platform || 'amd64') != 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-utils xz-utils
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build disk images
+        id: build
+        uses: osbuild/bootc-image-builder-action@8661cd3832544ad68c12dcde8681b13ab0f56a8d # main
+        with:
+          builder-image: ${{ env.BIB_IMAGE }}
+          config-file: ./disk_config/disk.toml
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.DEFAULT_TAG }}
+          chown: ${{ env.USER_UID }}:${{ env.USER_GID }}
+          types: ${{ matrix.disk-type }}
+          additional-args: --use-librepo=True
+
+      - name: Date-stamp names and compress
+        id: stamp
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT="${{ steps.build.outputs.output-directory }}"
+          DEST="${PWD}/stamped"
+          mkdir -p "${DEST}"
+          mapfile -t FILES < <(find "${OUT}" -type f \( -name '*.iso' -o -name '*.qcow2' -o -name '*.raw' \) | sort)
+          if [[ ${#FILES[@]} -eq 0 ]]; then
+            echo "No disk artifacts under ${OUT}" >&2
+            find "${OUT}" -type f >&2 || true
+            exit 1
+          fi
+          for src in "${FILES[@]}"; do
+            ext="${src##*.}"
+            dest="${DEST}/ryven-${STAMP}-${PLATFORM}.${ext}"
+            case "${ext}" in
+              qcow2)
+                qemu-img convert -c -O qcow2 -o compat=1.1,compression_type=zlib "${src}" "${dest}"
+                ;;
+              iso)
+                cp -a "${src}" "${dest}"
+                xz -9e -k -T0 "${dest}"
+                ;;
+              raw)
+                qemu-img convert -c -O qcow2 -o compat=1.1 "${src}" "${DEST}/ryven-${STAMP}-${PLATFORM}.qcow2"
+                ;;
+            esac
+          done
+          sha256sum "${DEST}"/* | tee "${DEST}/SHA256SUMS"
+          echo "stamped=${DEST}" >> "${GITHUB_OUTPUT}"
+          ls -lh "${DEST}"
+
+      - name: Upload disk images and checksum
+        if: github.event.inputs.upload-to-s3 != 'true' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ryven-${{ env.STAMP }}-${{ env.PLATFORM }}-${{ matrix.disk-type }}
+          path: ${{ steps.stamp.outputs.stamped }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          overwrite: true
+
+      - name: Upload to S3
+        if: github.event.inputs.upload-to-s3 == 'true' && github.event_name != 'pull_request'
+        shell: bash
+        env:
+          RCLONE_CONFIG_S3_TYPE: s3
+          RCLONE_CONFIG_S3_PROVIDER: ${{ secrets.S3_PROVIDER }}
+          RCLONE_CONFIG_S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_S3_REGION: ${{ secrets.S3_REGION }}
+          RCLONE_CONFIG_S3_ENDPOINT: ${{ secrets.S3_ENDPOINT }}
+          SOURCE_DIR: ${{ steps.stamp.outputs.stamped }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone
+          rclone copy "${SOURCE_DIR}" "S3:${{ secrets.S3_BUCKET_NAME }}"

@@ -1,0 +1,7 @@
+# Keep every PCI audio function (class 0x04xxxx: HDA controllers 0x0403,
+# HDMI/DP audio endpoints, SOF DSPs) out of runtime PM. A D3hot/D3cold
+# transition cuts codec power; the resume re-init produces audible pops and
+# first-play latency even when the driver's own power_save is off.
+# Complements /usr/lib/modprobe.d/audio-powersave.conf (driver layer) and
+# ryven-pci-latency.service (latency timers, class 04xx already pinned).
+SUBSYSTEM=="pci", ATTR{class}=="0x04*", ATTR{power/control}="on"

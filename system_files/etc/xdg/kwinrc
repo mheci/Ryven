@@ -1,0 +1,8 @@
+[org.kde.kdecoration2]
+library=org.kde.darkly
+theme=Darkly
+
+# Low-latency gaming: allow tearing so fullscreen games can present
+# immediately. VRR stays on KWin automatic per-output policy.
+[Compositing]
+AllowTearing=true

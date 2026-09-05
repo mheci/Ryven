@@ -1,0 +1,22 @@
+# Dependabot: GitHub Actions SHAs/tags and Containerfile FROM.
+# Renovate also runs (digests, custom regex). rebaseWhen never on Renovate;
+# Dependabot open-pull-requests-limit keeps noise down. Do not enable
+# cancel-in-progress on the image workflow when these PRs merge.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: ci
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore

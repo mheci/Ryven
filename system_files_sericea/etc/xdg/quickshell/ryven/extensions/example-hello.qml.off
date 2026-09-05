@@ -1,0 +1,23 @@
+// Example drop-in widget for the Ryven bar. Enable it by removing the
+// .off suffix (the bar reloads automatically), or just ask pi to build you
+// a real one: `ujust customize-bar`. Contract: root Item, height <= 22 px,
+// self-contained, #AARRGGBB colors, Inter 13. See ../AGENTS.md.
+import QtQuick
+
+Rectangle {
+    width: label.implicitWidth + 16
+    height: 22
+    radius: 6
+    color: "transparent"
+    border.width: 1
+    border.color: "#80415a77"
+
+    Text {
+        id: label
+        anchors.centerIn: parent
+        text: "hello from extensions"
+        color: "#778da9"
+        font.family: "Inter"
+        font.pixelSize: 13
+    }
+}

@@ -1,0 +1,11 @@
+[Unit]
+Description=Reduce PCI latency timers (CachyOS-style, gaming)
+Before=graphical-session-pre.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/ryven-pci-latency
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

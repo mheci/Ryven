@@ -1,0 +1,4 @@
+# Reboot 10 seconds after a kernel panic instead of hanging on the console.
+kargs = [
+  "panic=10",
+]

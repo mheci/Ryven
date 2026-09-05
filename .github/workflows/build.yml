@@ -1,0 +1,253 @@
+---
+# Unified build for all three Ryven images. One matrix job runs the same
+# proven just pipeline (build -> rechunk -> tag -> lint -> CST -> push ->
+# cosign -> attest) per image; only names, the Containerfile, the CST
+# config, and the host-fetched tarballs differ per variant.
+name: build
+on:
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Weekly rebuild/update every Saturday (06:00 UTC) so every image
+    # always tracks the current tip (floating :latest base + refresh
+    # upgrade in the compose).
+    - cron: '0 6 * * 6'
+  push:
+    branches:
+      - main
+    paths-ignore:
+      # Docs and lint config carry no image content; everything else rebuilds.
+      - '**/*.md'
+      - '.github/renovate.json5'
+      - '.github/dependabot.yml'
+      - '.github/workflows/automerge.yml'
+  workflow_dispatch:
+
+# One build per ref: a push landing while the weekly schedule runs must not
+# double-build identical images. Never cancel in-flight release builds.
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}"
+
+jobs:
+  preflight:
+    # NEVRA preflight (ci/preflight.sh in a pinned fedora:44 container):
+    # fails the run in minutes when a ladder package name has no literal
+    # provider, instead of dying 10+ minutes into the image build.
+    name: Preflight NEVRA check
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: NEVRA preflight
+        run: |
+          podman run --rm -v "${PWD}:/ctx:ro" fedora:44 bash /ctx/ci/preflight.sh
+
+  build_push:
+    name: Build ${{ matrix.image_name }}
+    needs: [preflight]
+    runs-on: ubuntu-26.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image_name: Ryven
+            containerfile: Containerfile
+            cst_config: ci/container-structure-test.yaml
+          - image_name: ryven-kunzite
+            containerfile: Containerfile.kunzite
+            cst_config: ci/container-structure-test-kunzite.yaml
+          - image_name: ryven-sericea
+            containerfile: Containerfile.sericea
+            cst_config: ci/container-structure-test-sericea.yaml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    env:
+      IMAGE_NAME: ${{ matrix.image_name }}
+      CONTAINERFILE: ${{ matrix.containerfile }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Maximize build space
+        uses: ublue-os/remove-unwanted-software@695eb75bc387dbcd9685a8e72d23439d8686cba6
+
+      - name: Install just
+        uses: extractions/setup-just@53165ef7e734c5c07cb06b3c8e7b647c5aa16db3 #v4.0.0
+
+      - name: Check Just Syntax
+        shell: bash
+        run: |
+          just check
+
+      - name: Default Tag
+        run: |
+          DEFAULT_TAG=$(just generate-default-tag)
+          echo "DEFAULT_TAG=${DEFAULT_TAG}" >> $GITHUB_ENV
+
+      - name: Prepare environment
+        run: |
+          echo "IMAGE_REGISTRY=${IMAGE_REGISTRY,,}" >> ${GITHUB_ENV}
+          echo "IMAGE_NAME=${IMAGE_NAME,,}" >> ${GITHUB_ENV}
+
+      - name: Fetch browsers
+        # Host-side fetch (ci/fetch-browsers.sh, runs on the runner): the
+        # in-container fetch to betterbird.eu / its CDN repeatedly killed
+        # the build container, and an inline ~2KB step script for the same
+        # fetch was observed executing only its first ~500 bytes on the
+        # runner (silent exit 0, no file). The logic therefore lives in a
+        # committed script file; this step stays tiny. BetterBird comes from
+        # its download listing; Firefox, Zen, and Brave Origin from their
+        # official upstream releases (SHA512/sha256 verified). GITHUB_TOKEN
+        # lifts the anonymous GitHub API rate budget.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash ci/fetch-browsers.sh
+
+      - name: Fetch Pi coding agent
+        # Host-side fetch (ci/fetch-pi.sh), same pattern as the browsers:
+        # stages the always-latest @earendil-works/pi-coding-agent npm tree
+        # into _build/pi/. The image extracts it into /usr (compose.sh:
+        # install_pi); nodejs+npm are already in every image.
+        run: bash ci/fetch-pi.sh
+
+      - name: Verify browser fetches
+        # Fail closed if any payload is missing (independent of the fetch
+        # step's own exit status).
+        run: |
+          ls -laR _build 2>/dev/null || echo 'NO _build'
+          test -s _build/betterbird/*.tar.xz || { echo 'BetterBird tarball missing' >&2; exit 1; }
+          test -s _build/pi/pi-*.tar.gz || { echo 'Pi tarball missing' >&2; exit 1; }
+          test -s _build/firefox/firefox-*.tar.xz || { echo 'Firefox tarball missing' >&2; exit 1; }
+          test -s _build/zen/zen-*.tar.xz || { echo 'Zen tarball missing' >&2; exit 1; }
+          test -s _build/brave/brave-origin-*.x86_64.rpm || { echo 'Brave Origin RPM missing' >&2; exit 1; }
+          test -s _build/brave/brave-keyring-*.noarch.rpm || { echo 'brave-keyring RPM missing' >&2; exit 1; }
+          echo 'All browser payloads present'
+
+      - name: Build Image
+        id: build-image
+        env:
+          # Ephemeral per-run token for API lookups via the secret mount.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          just build \
+            ${IMAGE_NAME} \
+            ${DEFAULT_TAG}
+
+      - name: Rechunk with rpm-ostree
+        id: rechunk
+        run: |
+          just ostree-rechunk \
+            ${IMAGE_NAME} \
+            ${DEFAULT_TAG}
+
+      - name: Generate Build Tags
+        id: gen-build-tags
+        run: |
+          alias_tags="$(just generate-build-tags \
+                        ${IMAGE_NAME} \
+                        ${DEFAULT_TAG})"
+          echo "Tags for this Action..."
+          echo "${alias_tags}"
+          echo "alias_tags=${alias_tags}" >> $GITHUB_OUTPUT
+
+      - name: Tag Image
+        env:
+          ALIAS_TAGS: ${{ steps.gen-build-tags.outputs.alias_tags }}
+        run: |
+          just tag-images \
+            "${IMAGE_NAME}" \
+            "${DEFAULT_TAG}" \
+            "${ALIAS_TAGS}"
+
+      - name: bootc container lint
+        run: |
+          set -euo pipefail
+          podman run --rm --privileged --entrypoint bootc \
+            "${IMAGE_NAME}:${DEFAULT_TAG}" container lint
+
+      - name: Container Structure Test
+        env:
+          CST_VER: v1.22.1
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/cst \
+            "https://github.com/GoogleContainerTools/container-structure-test/releases/download/${CST_VER}/container-structure-test-linux-amd64"
+          chmod +x /tmp/cst
+          sock="${RUNNER_TEMP}/podman.sock"
+          podman system service --time=0 "unix://${sock}" &
+          for i in $(seq 1 30); do
+            [[ -S ${sock} ]] && break
+            sleep 1
+          done
+          [[ -S ${sock} ]]
+          export DOCKER_HOST="unix://${sock}"
+          export TMPDIR="${RUNNER_TEMP}"
+          /tmp/cst test --driver docker --image "${IMAGE_NAME}:${DEFAULT_TAG}" \
+            --config ${{ matrix.cst_config }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4.5.1
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push To GHCR
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        id: push-image
+        env:
+          ALIAS_TAGS: ${{ steps.gen-build-tags.outputs.alias_tags }}
+        run: |
+          set -euox pipefail
+          for tag in ${ALIAS_TAGS}; do
+            podman push --digestfile=/tmp/digestfile ${IMAGE_NAME}:${tag} ${IMAGE_REGISTRY}/${IMAGE_NAME}:${tag}
+          done
+          digest=$(< /tmp/digestfile)
+          echo "digest=${digest}" >> $GITHUB_OUTPUT
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        with:
+          cosign-release: 'v3.1.2'
+
+      - name: Sign image with Cosign key
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        env:
+          COSIGN_EXPERIMENTAL: false
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+          DIGEST: ${{ steps.push-image.outputs.digest }}
+        run: |
+          if [[ -z ${COSIGN_PRIVATE_KEY} ]]; then
+            echo 'SIGNING_SECRET unset; skipping static-key Cosign'
+            exit 0
+          fi
+          cosign sign -y --new-bundle-format=false --use-signing-config=false \
+            --key env://COSIGN_PRIVATE_KEY \
+            "${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+
+      - name: Sign image with Cosign OIDC
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        env:
+          DIGEST: ${{ steps.push-image.outputs.digest }}
+        run: |
+          cosign sign -y "${IMAGE_REGISTRY}/${IMAGE_NAME}@${DIGEST}"
+
+      - name: Attest build provenance
+        if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push-image.outputs.digest }}
+          push-to-registry: true

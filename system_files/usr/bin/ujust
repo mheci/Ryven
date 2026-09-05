@@ -1,0 +1,3 @@
+#!/usr/bin/bash
+set -euo pipefail
+exec /usr/bin/just --unstable --justfile /usr/share/ryven/justfile --working-directory "${PWD}" "$@"

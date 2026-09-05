@@ -1,0 +1,11 @@
+# AMD Zen 2+ (amd_pstate) and gaming frametime stability.
+# No SKU-specific hardware identifiers. TSC handling lives in
+# 40-tsc-clocksource.toml (all vendors).
+kargs = [
+  "amd_pstate=active",
+  "amd_prefcore=enable",
+  "nowatchdog",
+  "nmi_watchdog=0",
+  "split_lock_detect=off",
+  "preempt=full",
+]

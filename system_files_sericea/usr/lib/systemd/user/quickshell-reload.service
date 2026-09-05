@@ -1,0 +1,9 @@
+[Unit]
+Description=Restart the Ryven bar after Quickshell config changes
+
+[Service]
+Type=oneshot
+# Restart only a running bar: before the compositor starts (no Wayland
+# socket) quickshell would just crash-loop, so leave it to the compositor
+# exec to bring the service up initially.
+ExecStart=/bin/sh -c 'systemctl --user is-active --quiet quickshell.service && systemctl --user restart quickshell.service || true'

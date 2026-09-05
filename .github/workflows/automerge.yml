@@ -1,0 +1,24 @@
+# Auto-merge bot maintenance PRs (Dependabot + Renovate) once CI is green.
+# pull_request_target runs the BASE workflow (safe for bot PRs): the job only
+# acts when the author is a bot and every check passes, then enables squash
+# auto-merge. Direct pushes to main are unaffected.
+name: Automerge bot updates
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+permissions:
+  pull-requests: write
+  contents: write
+jobs:
+  automerge:
+    if: github.actor == 'dependabot[bot]' || github.actor == 'renovate[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Wait for CI and enable squash auto-merge
+        run: |
+          gh pr checks "${PR}" --watch --interval 60 || exit 1
+          gh pr merge --auto --squash "${PR}"
+        env:
+          PR: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

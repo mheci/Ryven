@@ -1,0 +1,8 @@
+# Disable USB autosuspend system-wide. usbcore is built into the Fedora
+# kernel, so /usr/lib/modprobe.d cannot reach it — the kernel cmdline is
+# the only knob. USB DACs, headsets and receivers routinely drop their
+# first packets, click, or re-enumerate after runtime suspend; gaming
+# peripherals with buggy idle-suspend firmware also stop stalling.
+kargs = [
+  "usbcore.autosuspend=-1",
+]

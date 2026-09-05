@@ -1,0 +1,106 @@
+# Google container-structure-test. Driver in CI is tar (podman save) so this
+# does not require a Docker daemon. Commands run in a throwaway container
+# filesystem; do not expect systemd.
+schemaVersion: "2.0.0"
+fileExistenceTests:
+  - name: nvidia bootc kargs
+    path: /usr/lib/bootc/kargs.d/00-nvidia.toml
+    shouldExist: true
+  - name: zswap kargs
+    path: /usr/lib/bootc/kargs.d/10-zswap.toml
+    shouldExist: true
+  - name: amd zen kargs
+    path: /usr/lib/bootc/kargs.d/20-amd-zen.toml
+    shouldExist: true
+  - name: ryven look-and-feel
+    path: /usr/share/plasma/look-and-feel/org.ryven.desktop/metadata.json
+    shouldExist: true
+  - name: terra-extras repo
+    path: /etc/yum.repos.d/terra-extras.repo
+    shouldExist: true
+  - name: ujust
+    path: /usr/bin/ujust
+    shouldExist: true
+    isExecutableBy: owner
+  - name: firefox (upstream tarball)
+    path: /opt/firefox/firefox
+    shouldExist: true
+    isExecutableBy: owner
+  - name: zen (upstream tarball)
+    path: /opt/zen/zen
+    shouldExist: true
+    isExecutableBy: owner
+  - name: firefox policies
+    path: /opt/firefox/distribution/policies.json
+    shouldExist: true
+  - name: zen policies
+    path: /opt/zen/distribution/policies.json
+    shouldExist: true
+  - name: gecko policies source
+    path: /usr/share/ryven/gecko-policies.json
+    shouldExist: true
+  - name: oo7 daemon
+    path: /usr/bin/oo7-daemon
+    shouldExist: true
+    isExecutableBy: owner
+  - name: pam_oo7
+    path: /usr/lib/security/pam_oo7.so
+    shouldExist: true
+  - name: secrets dbus activation
+    path: /etc/dbus-1/services/org.freedesktop.secrets.service
+    shouldExist: true
+  - name: polkitd
+    path: /usr/lib/polkit-1/polkitd
+    shouldExist: true
+    isExecutableBy: owner
+  - name: pkcon
+    path: /usr/bin/pkcon
+    shouldExist: true
+    isExecutableBy: owner
+  - name: pi coding agent
+    path: /usr/bin/pi
+    shouldExist: true
+  - name: pi global AGENTS.md skeleton
+    path: /etc/skel/.pi/agent/AGENTS.md
+    shouldExist: true
+  - name: pi quickshell-bar skill skeleton
+    path: /etc/skel/.pi/agent/skills/ryven-quickshell-bar/SKILL.md
+    shouldExist: true
+commandTests:
+  - name: pi runs
+    command: bash
+    args: ["-c", "PI_OFFLINE=1 pi --version"]
+    expectedOutput: ["[0-9]+\\.[0-9]+\\.[0-9]+"]
+  - name: ujust list parses
+    command: ujust
+    args: ["--list"]
+  - name: brave-origin rpm
+    command: rpm
+    args: ["-q", "brave-origin"]
+  - name: keepassxc rpm
+    command: rpm
+    args: ["-q", "keepassxc"]
+  - name: ffmpeg not ffmpeg-free
+    command: rpm
+    args: ["-q", "ffmpeg"]
+  - name: kdeglobals look-and-feel
+    command: grep
+    args: ["-q", "LookAndFeelPackage=org.ryven.desktop", "/etc/xdg/kdeglobals"]
+  - name: Inter default font
+    command: grep
+    args: ["-q", "font=Inter,", "/etc/xdg/kdeglobals"]
+  - name: Darkly widgetStyle
+    command: grep
+    args: ["-q", "widgetStyle=Darkly", "/etc/xdg/kdeglobals"]
+  - name: PackageKit rpm
+    command: rpm
+    args: ["-q", "PackageKit"]
+  - name: polkit rpm
+    command: rpm
+    args: ["-q", "polkit"]
+  - name: kwallet pam targets kwalletd6, never ksecretd
+    command: grep
+    args: ["-q", "kwalletd=/usr/bin/kwalletd6", "/usr/libexec/ryven-keyring-pam"]
+  - name: oo7 secret portal covers kde
+    command: grep
+    args: ["-q", "UseIn=hyprland,sway,kde", "/usr/share/xdg-desktop-portal/portals/oo7-portal.portal"]
