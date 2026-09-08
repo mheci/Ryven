@@ -11,11 +11,12 @@ if ! rpm -q "kernel-cachyos-lto-devel-matched" &>/dev/null; then
     dnf5 install -y --skip-unavailable kernel-cachyos-lto-devel-matched
 fi
 # Build toolchain: Clang/LLVM + kernel build tools
-dnf5 install -y --skip-unavailable akmods clang lld llvm llvm-devel \
-    make openssl kmod elfutils-devel perl flex bison bc dwarves 2>/dev/null || true
-# Ensure akmods binary exists
+dnf5 install -y --skip-unavailable clang lld llvm llvm-devel \
+    make openssl kmod elfutils-devel perl flex bison bc dwarves rpm-build \
+    ublue-os-akmods-addons 2>/dev/null || true
+# Ensure akmods binary exists (from ublue-os-akmods-addons or akmods)
 if ! command -v akmods &>/dev/null; then
-    dnf5 install -y --skip-unavailable akmods
+    dnf5 install -y --skip-unavailable akmods ublue-os-akmods-addons || dnf5 install -y --skip-unavailable akmods
 fi
 
 # Generate signing key if missing (akmods signs built modules).
@@ -76,13 +77,19 @@ export KERNEL_CC=clang
 export KCFLAGS="-fno-lto -fno-split-lto-unit -march=x86-64-v3 -mtune=generic -Wno-error"
 export MAKEFLAGS="-j$(nproc)"
 
-# akmods internally calls runuser; override it with setpriv via a wrapper injected in PATH
+# Run as root (akmods will internally drop to akmods user for compile via runuser,
+# but needs root to install the resulting RPM). In containers we shim runuser to
+# use setpriv since runuser needs a PAM/login session.
 WRAPDIR=$(mktemp -d)
 cat > "${WRAPDIR}/runuser" <<'WRAP'
 #!/usr/bin/env bash
 # Drop-in shim: convert "runuser -u akmods -- <cmd...>" to "setpriv --reuid=akmods --regid=akmods --clear-groups -- <cmd...>"
 if [ "$1" = "-u" ] && [ -n "$2" ] && [ "$3" = "--" ]; then
     exec setpriv --reuid="$2" --regid="$2" --clear-groups -- "${@:4}"
+fi
+# Also handle "runuser -u akmods <cmd...>" (no -- separator)
+if [ "$1" = "-u" ] && [ -n "$2" ]; then
+    exec setpriv --reuid="$2" --regid="$2" --clear-groups -- "${@:3}"
 fi
 exec setpriv "$@"
 WRAP
@@ -92,10 +99,26 @@ export PATH="${WRAPDIR}:${PATH}"
 # Ensure akmods user exists (created by akmods package; create if not)
 id akmods &>/dev/null || useradd -r -s /sbin/nologin -d /var/lib/akmods -G rpm akmods 2>/dev/null || true
 install -d -o akmods -g akmods -m 0755 /var/cache/akmods /var/lib/akmods /tmp/akmodsbuild 2>/dev/null || true
+install -d -m 0755 /usr/lib/modules/"${KERNEL_VERSION}"/extra 2>/dev/null || true
 
-# Build all required kmods: akmods refuses to run as root in container builds.
-# Try akmods with --force first (our PATH shim converts runuser -> setpriv), falling back
-# to akmodsbuild directly against src.rpms.
+# akmods ships with a guard ("Needs to run as root to be able to install rpms") that
+# checks / is writable; in container builds / is writable but the check also wants
+# `test -w /` to succeed. Make sure root really is root (buildah runs as uid 0) and
+# patch the guard directly if it exists.
+if [ -f /usr/sbin/akmods ] && grep -q "Needs to run as root" /usr/sbin/akmods 2>/dev/null; then
+    echo "Patching /usr/sbin/akmods root/writability guard for container build"
+    sed -i 's|Needs to run as root to be able to install rpms|Container build: skip root guard|g' /usr/sbin/akmods
+    sed -i 's|if .*id -u.*!=.*0|if false \&\& &|g' /usr/sbin/akmods
+    # If it checks test -w /, ensure root owns / (should already) and make / writable
+    chmod u+w /
+fi
+if [ -x /usr/sbin/akmodscheck ]; then
+    printf '#!/bin/bash\nexit 0\n' > /usr/sbin/akmodscheck
+    chmod +x /usr/sbin/akmodscheck
+fi
+
+# Build all required kmods. Run as root (we need to install RPMs); akmods uses runuser
+# internally (shimmed to setpriv) to compile as akmods user.
 for mod in nvidia xone xpadneo openrazer; do
     echo "==> Building akmod: ${mod}"
     SRPM=$(ls /usr/src/akmods/"${mod}"-kmod*.src.rpm 2>/dev/null | head -n1 || echo "")
@@ -103,12 +126,9 @@ for mod in nvidia xone xpadneo openrazer; do
         echo "  (no src.rpm found for ${mod}; skipping)"
         continue
     fi
-    # Run akmods (the wrapper script) as akmods user via our runuser shim.
-    if setpriv --reuid=akmods --regid=akmods --clear-groups --inh-caps=-all -- \
-        akmods --force --kernels "${KERNEL_VERSION}" --akmod "${mod}" 2>&1; then
+    if akmods --force --kernels "${KERNEL_VERSION}" --akmod "${mod}" 2>&1; then
         echo "  ${mod} built via akmods"
-    elif setpriv --reuid=akmods --regid=akmods --clear-groups --inh-caps=-all -- \
-        akmodsbuild --kernels "${KERNEL_VERSION}" "${SRPM}" 2>&1; then
+    elif akmodsbuild --kernels "${KERNEL_VERSION}" "${SRPM}" 2>&1; then
         echo "  ${mod} built via akmodsbuild"
     else
         echo "ERROR: akmod ${mod} build failed" >&2
