@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Basic retry helper for transient network failures
+try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; done; return 1; }
 # Install ryven-gaming tuned profile, tuned + tuned-ppd, sysctl/limits/uaccess defaults.
 set -euo pipefail
 

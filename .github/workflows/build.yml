@@ -22,13 +22,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y buildah uidmap
       - name: Build OCI image (KDE)
-        run: |
-          buildah bud \
-            --build-arg IMAGE_VARIANT=kde \
-            -t ghcr.io/mheci/ryven-nvidia-open:${GITHUB_SHA::12} \
-            -t ghcr.io/mheci/ryven-nvidia-open:44 \
-            -t ghcr.io/mheci/ryven-nvidia-open:latest \
-            -f Containerfile.kde .
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: |
+            buildah bud \
+              --build-arg IMAGE_VARIANT=kde \
+              -t ghcr.io/mheci/ryven-nvidia-open:${GITHUB_SHA::12} \
+              -t ghcr.io/mheci/ryven-nvidia-open:44 \
+              -t ghcr.io/mheci/ryven-nvidia-open:latest \
+              -f Containerfile.kde .
       - name: Push to GHCR
         if: github.event_name != 'pull_request'
         env:
@@ -59,13 +64,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y buildah uidmap
       - name: Build OCI image (wl)
-        run: |
-          buildah bud \
-            --build-arg IMAGE_VARIANT=wl \
-            -t ghcr.io/mheci/ryven-wl-nvidia-open:${GITHUB_SHA::12} \
-            -t ghcr.io/mheci/ryven-wl-nvidia-open:44 \
-            -t ghcr.io/mheci/ryven-wl-nvidia-open:latest \
-            -f Containerfile.wl .
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 30
+          max_attempts: 3
+          retry_wait_seconds: 10
+          command: |
+            buildah bud \
+              --build-arg IMAGE_VARIANT=wl \
+              -t ghcr.io/mheci/ryven-wl-nvidia-open:${GITHUB_SHA::12} \
+              -t ghcr.io/mheci/ryven-wl-nvidia-open:44 \
+              -t ghcr.io/mheci/ryven-wl-nvidia-open:latest \
+              -f Containerfile.wl .
       - name: Push to GHCR
         if: github.event_name != 'pull_request'
         env:

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Basic retry helper for transient network failures
+try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; done; return 1; }
 # Install full codec bundle (Terra first, RPMFusion fallback), VA-API defaults, Firefox policies.
 set -euo pipefail
 

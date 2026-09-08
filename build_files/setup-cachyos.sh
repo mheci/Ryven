@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Basic retry helper for transient network failures
+try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; done; return 1; }
 export KERNEL_INSTALL_DIR=/dev/null
 export INITRD_POST_UPDATE_DISABLE=true
 export DNF5_DISABLE_POST_TRANSACTION_ACTIONS=true

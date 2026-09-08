@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Basic retry helper for transient network failures
+try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; done; return 1; }
 # Enable RPMFusion/Terra-nvidia, install NVIDIA open driver stack, configure services.
 set -euo pipefail
 
@@ -7,8 +9,7 @@ KERNEL_VERSION="$(rpm -q kernel-cachyos-lto --queryformat '%{VERSION}-%{RELEASE}
 echo "Installing RPMFusion (required for NVIDIA open kmods)..."
 dnf5 install -y --skip-unavailable \
     "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
-    "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm" \
-    "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-tainted-release-$(rpm -E %fedora).noarch.rpm"
+    "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm"
 
 echo "Enabling Terra (nvidia-vaapi, mesa, codecs)..."
 dnf5 -y install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra'"$(rpm -E %fedora)" terra-release terra-gpg-keys
