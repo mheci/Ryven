@@ -21,18 +21,23 @@ echo "ryven-gaming" > /etc/tuned/active_profile 2>/dev/null || true
 tuned-adm profile ryven-gaming 2>/dev/null || echo "(tuned daemon not running in container; profile set via active_profile)"
 
 # Copy system configs
-cp system_files/common/usr/lib/sysctl.d/*.conf /usr/lib/sysctl.d/
-cp system_files/common/usr/lib/security/limits.d/*.conf /usr/lib/security/limits.d/
-cp system_files/common/usr/lib/udev/rules.d/*.rules /usr/lib/udev/rules.d/
-cp system_files/common/usr/lib/modules-load.d/*.conf /usr/lib/modules-load.d/
-cp system_files/common/usr/lib/modprobe.d/*.conf /usr/lib/modprobe.d/
-cp system_files/common/usr/lib/environment.d/*.conf /usr/lib/environment.d/
-cp system_files/common/usr/lib/systemd/system-environment-generators/* /usr/lib/systemd/system-environment-generators/
-chmod +x /usr/lib/systemd/system-environment-generators/*
-cp system_files/common/usr/share/polkit-1/actions/*.policy /usr/share/polkit-1/actions/
+# Copy config files safely (use for loops so empty globs don't cause cp errors)
+for f in system_files/common/usr/lib/sysctl.d/*.conf; do [ -f "$f" ] && cp "$f" /usr/lib/sysctl.d/; done
+for f in system_files/common/usr/lib/security/limits.d/*.conf; do [ -f "$f" ] && cp "$f" /usr/lib/security/limits.d/; done
+for f in system_files/common/usr/lib/udev/rules.d/*.rules; do [ -f "$f" ] && cp "$f" /usr/lib/udev/rules.d/; done
+for f in system_files/common/usr/lib/modules-load.d/*.conf; do [ -f "$f" ] && cp "$f" /usr/lib/modules-load.d/; done
+for f in system_files/common/usr/lib/modprobe.d/*.conf; do [ -f "$f" ] && cp "$f" /usr/lib/modprobe.d/; done
+for f in system_files/common/usr/lib/environment.d/*.conf; do [ -f "$f" ] && cp "$f" /usr/lib/environment.d/; done
+for f in system_files/common/usr/lib/systemd/system-environment-generators/*; do
+    if [ -f "$f" ]; then
+        cp "$f" /usr/lib/systemd/system-environment-generators/
+        chmod +x "/usr/lib/systemd/system-environment-generators/$(basename "$f")"
+    fi
+done
+for f in system_files/common/usr/share/polkit-1/actions/*.policy; do [ -f "$f" ] && cp "$f" /usr/share/polkit-1/actions/; done
 
 # Create groups system-sysusers
-cp system_files/common/usr/lib/sysusers.d/*.conf /usr/lib/sysusers.d/
+for f in system_files/common/usr/lib/sysusers.d/*.conf; do [ -f "$f" ] && cp "$f" /usr/lib/sysusers.d/; done
 systemd-sysusers
 
 # Disable zram-generator, zswap configured via kargs

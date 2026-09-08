@@ -19,22 +19,22 @@ if command -v dconf &>/dev/null; then
     dconf write /org/gnome/desktop/interface/monospace-font-name "'JetBrains Mono 10'"
 fi
 
-# Copy skel defaults to /etc/skel
-cp -r skel/. /etc/skel/
+# Copy skel defaults to /etc/skel (skel is at /tmp/skel per Containerfile)
+cp -r /tmp/skel/. /etc/skel/ 2>/dev/null || true
 
 # Copy Plasma Login Manager config (KDE)
 if [ "${IMAGE_VARIANT:-}" = "kde" ]; then
-    cp system_files/kde/usr/share/plasma/plasmalogin.conf.d/*.conf /usr/share/plasma/plasmalogin.conf.d/
-    cp system_files/kde/usr/share/kwin/rules/*.rules /usr/share/kwin/rules/
+    for f in system_files/kde/usr/share/plasma/plasmalogin.conf.d/*.conf; do [ -f "$f" ] && cp "$f" /usr/share/plasma/plasmalogin.conf.d/; done
+    for f in system_files/kde/usr/share/kwin/rules/*.rules; do [ -f "$f" ] && cp "$f" /usr/share/kwin/rules/; done
 fi
 
 # Copy Hyprland/quickshell/ryven-control defaults (wl)
 if [ "${IMAGE_VARIANT:-}" = "wl" ]; then
-    cp -r system_files/wl/usr/share/hypr/ryven-default /usr/share/hypr/
-    cp -r system_files/wl/usr/share/quickshell/ryven /usr/share/quickshell/
-    cp -r system_files/wl/usr/lib/ryven-control /usr/lib/
-    cp system_files/wl/usr/lib/systemd/system/greetd.service.d/*.conf /usr/lib/systemd/system/greetd.service.d/
-    cp system_files/wl/etc/greetd/config.toml /etc/greetd/
+    [ -d system_files/wl/usr/share/hypr/ryven-default ] && cp -r system_files/wl/usr/share/hypr/ryven-default /usr/share/hypr/
+    [ -d system_files/wl/usr/share/quickshell/ryven ] && cp -r system_files/wl/usr/share/quickshell/ryven /usr/share/quickshell/
+    [ -d system_files/wl/usr/lib/ryven-control ] && cp -r system_files/wl/usr/lib/ryven-control /usr/lib/
+    for f in system_files/wl/usr/lib/systemd/system/greetd.service.d/*.conf; do [ -f "$f" ] && cp "$f" /usr/lib/systemd/system/greetd.service.d/; done
+    [ -f system_files/wl/etc/greetd/config.toml ] && cp system_files/wl/etc/greetd/config.toml /etc/greetd/
 fi
 
 echo "Themes and skel applied."
