@@ -17,8 +17,8 @@ rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
 
 # Helper: best-effort package install (failing packages don't break the build).
 inst() {
-    # Pre-create /opt so third-party packages (Zen, Brave, etc.) that unpack into /opt don't fail on missing dir
-    mkdir -p /opt
+    # /opt may be a composefs mount; mkdir best-effort.
+    ( mkdir -p /opt 2>/dev/null ) || true
     dnf5 install -y --skip-unavailable --setopt=strict=0 --setopt install_weak_deps=False "$@" 2>&1 || true
 }
 

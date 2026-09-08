@@ -13,14 +13,15 @@ fi
 rm -f /tmp/openh264.repo
 
 echo "Installing full codec stack (Terra first)..."
-# Use best-effort: skip-broken and allow erasing/downgrades. Terra's ffmpeg replaces libavcodec-freeworld.
-dnf5 install -y --skip-unavailable --skip-broken --setopt=strict=0 --setopt install_weak_deps=False \
+# Use best-effort: allow erasing/downgrades so Terra's x265-libs (1:4.2) replaces rpmfusion's older 4.1.
+# Terra's ffmpeg replaces libavcodec-freeworld.
+dnf5 install -y --skip-unavailable --skip-broken --allowerasing --best \
+    --setopt=strict=0 --setopt=install_weak_deps=False \
     ffmpeg ffmpeg-libs \
     gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugins-bad-freeworld \
     gstreamer1-plugins-ugly-free gstreamer1-libav gstreamer1-plugin-openh264 \
     libva libva-utils vdpauinfo \
     nv-codec-headers libvdpau-va-gl \
-    x264-libs x265-libs \
     mpv \
     openh264 mozilla-openh264 2>&1 || echo "WARNING: some codec packages failed to install; continuing"
 

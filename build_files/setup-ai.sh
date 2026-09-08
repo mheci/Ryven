@@ -22,14 +22,23 @@ if ! dnf5 install -y --skip-unavailable --setopt=strict=0 t3code 2>/dev/null; th
 fi
 
 echo "Building llama.cpp from source with CUDA/x86-64-v3 (best-effort)..."
-# Build dependencies (best-effort; CUDA stack may be large; install what we can)
+# Build dependencies (best-effort; CUDA stack may be large; install what we can).
+# Skip cuda-nvcc from distro repos: NVIDIA CUDA deps are already provided by nvidia-driver-cuda-devel
+# and distro cuda-nvcc tries to mkdir /opt/cuda which conflicts with composefs mounts.
 dnf5 install -y --skip-unavailable --setopt=strict=0 --setopt install_weak_deps=False \
-    cmake gcc-c++ git cuda-nvcc cuda-cudart-devel 2>/dev/null || true
+    cmake gcc-c++ git 2>/dev/null || true
+# Check for nvcc from driver bundle
+if ! command -v nvcc >/dev/null 2>&1; then
+    echo "  (CUDA nvcc not available in container; llama.cpp built with CPU-only GGML backends)"
+    CUDA_FLAG="-DGGML_CUDA=OFF"
+else
+    CUDA_FLAG="-DGGML_CUDA=ON"
+fi
 TMPDIR=$(mktemp -d)
 if git clone --depth 1 https://github.com/ggml-org/llama.cpp "${TMPDIR}" 2>/dev/null; then
     if cmake -S "${TMPDIR}" -B "${TMPDIR}/build" \
         -DCMAKE_BUILD_TYPE=Release \
-        -DGGML_CUDA=ON \
+        ${CUDA_FLAG} \
         -DGGML_NATIVE=OFF \
         -DCMAKE_C_FLAGS="-march=x86-64-v3" \
         -DCMAKE_CXX_FLAGS="-march=x86-64-v3" \
