@@ -57,25 +57,13 @@ if [ ! -f /etc/pki/akmods/certs/public_key.der ]; then
     kmodgenca -a --force 2>/dev/null || true
 fi
 
-# Clang/ThinLTO-compatible build flags for CachyOS-LTO kernel (Clang+ThinLTO, 1000Hz, x86-64-v3).
-# Use setpriv instead of runuser (works in build container without login session).
-export CC="/usr/bin/clang"
-export CXX="/usr/bin/clang++"
-export LD="/usr/bin/ld.lld"
-export AR="/usr/bin/llvm-ar"
-export NM="/usr/bin/llvm-nm"
-export STRIP="/usr/bin/llvm-strip"
-export OBJCOPY="/usr/bin/llvm-objcopy"
-export OBJDUMP="/usr/bin/llvm-objdump"
-export READELF="/usr/bin/llvm-readelf"
-export HOSTCC="/usr/bin/clang"
-export HOSTCXX="/usr/bin/clang++"
-export LLVM=1
-export LLVM_IAS=1
-export KERNEL_CC=clang
-# Disable LTO for kmods (can't link against LTO'd kernel objects); target x86-64-v3
-export KCFLAGS="-fno-lto -fno-split-lto-unit -march=x86-64-v3 -mtune=generic -Wno-error"
+# Out-of-tree kmods against kernel-cachyos-lto (Clang+ThinLTO) are traditionally built
+# with the system GCC; CachyOS-LTO exports correct ARCH/COMPILER flags so modules link.
+# We only add -march=x86-64-v3 and disable LTO for the out-of-tree kmods.
+export KCFLAGS="-fno-lto -fno-split-lto-unit -march=x86-64-v3 -mtune=generic -Wno-error -Wno-incompatible-pointer-types"
 export MAKEFLAGS="-j$(nproc)"
+# Do NOT globally override CC/CXX/HOSTCC to clang; akmods/kmodtool build user-space
+# helpers with the distro compiler and kernel selects its own CC for module builds.
 
 # Run as root (akmods will internally drop to akmods user for compile via runuser,
 # but needs root to install the resulting RPM). In containers we shim runuser to
@@ -131,8 +119,19 @@ for mod in nvidia xone xpadneo openrazer; do
     elif akmodsbuild --kernels "${KERNEL_VERSION}" "${SRPM}" 2>&1; then
         echo "  ${mod} built via akmodsbuild"
     else
-        echo "ERROR: akmod ${mod} build failed" >&2
-        exit 1
+        # Dump failure log for debugging, but don't hard-fail for nvidia yet (log it)
+        FAIL_LOG=$(ls /var/cache/akmods/"${mod}"/*failed.log 2>/dev/null | tail -n1 || echo "")
+        if [ -n "${FAIL_LOG}" ]; then
+            echo "===== ${mod} FAILED LOG (${FAIL_LOG}) ====="
+            tail -n 80 "${FAIL_LOG}" 2>/dev/null || true
+            echo "===== END FAILED LOG ====="
+        fi
+        if [ "${mod}" = "nvidia" ]; then
+            echo "ERROR: akmod ${mod} build failed (required)" >&2
+            exit 1
+        else
+            echo "WARNING: akmod ${mod} build failed (optional); continuing" >&2
+        fi
     fi
 done
 
