@@ -18,24 +18,24 @@ dnf5 config-manager enable terra-mesa terra-extras terra-nvidia 2>/dev/null || t
 # Terra higher priority than RPMFusion for codec/mesa packages (dnf5 setopt)
 dnf5 config-manager setopt terra.priority=50 terra-mesa.priority=40 --save 2>/dev/null || true
 
-# Stub out akmods binary during install so RPM %post scriptlets don't fail
-# trying to build kmods as root inside the container. We run our own explicit
-# Clang/LLVM build afterwards as the akmods user.
-install -d -m 0755 /tmp/akmod-stub
-cat > /tmp/akmod-stub/akmods <<'STUB'
+# Stub out akmods binary DURING RPM TRANSACTION so %post scriptlets of
+# akmod-nvidia/-xone/-xpadneo/-openrazer don't fail trying to run auto-build
+# as root in a container. Create /usr/sbin/akmods as a no-op BEFORE the
+# packages are installed; RPM won't overwrite it since it matches (a file).
+install -d -m 0755 /usr/sbin
+cat > /usr/sbin/akmods <<'STUB'
 #!/usr/bin/env bash
-# Container-build stub: %post auto-build disabled; kmods built explicitly later.
-echo "akmods: container build, skipping auto-build (will be run explicitly)"
+echo "akmods [container-build stub]: skipping auto-build; kmods will be built explicitly later" >&2
 exit 0
 STUB
-chmod 0755 /tmp/akmod-stub/akmods
-export PATH="/tmp/akmod-stub:${PATH}"
-# Override any existing /usr/sbin/akmods if akmods package was pulled earlier
-[ -x /usr/sbin/akmods ] && mv -f /usr/sbin/akmods /usr/sbin/akmods.real || true
-ln -sf /tmp/akmod-stub/akmods /usr/sbin/akmods
+chmod 0755 /usr/sbin/akmods
+# Also set an env var telling akmods not to build (honored by akmods %post in some versions)
+export DAKMODS_DISABLE_AUTO_BUILD=1
+# Override RPM scriptlet failure so even if %post barfs, transaction completes
+export RPM_SCRIPTLET_FAILURE_ACTION=warn
 
 echo "Installing NVIDIA open kernel driver + userspace (auto-build stubbed)..."
-dnf5 install -y --skip-unavailable \
+dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
     akmod-nvidia nvidia-driver nvidia-driver-libs nvidia-driver-cuda \
     nvidia-driver-libs.i686 nvidia-driver-cuda.i686 \
     nvidia-gpu-firmware nvidia-modprobe nvidia-persistenced nvidia-settings \
@@ -44,17 +44,13 @@ dnf5 install -y --skip-unavailable \
 
 echo "Installing third-party akmods..."
 dnf5 copr enable -y atim/xone
-dnf5 install -y --skip-unavailable \
+dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
     xone akmod-xone xpadneo akmod-xpadneo openrazer akmod-openrazer
 
-# Restore real akmods (point to the binary shipped by akmods package)
-rm -f /usr/sbin/akmods
-if [ -x /usr/sbin/akmods.real ]; then
-    mv -f /usr/sbin/akmods.real /usr/sbin/akmods
-else
-    # akmods package may have installed its own; if stub shadowed it, reinstall it
-    dnf5 reinstall -y akmods 2>/dev/null || true
-fi
+# Now restore the real akmods binary by reinstalling akmods (this time without
+# noscripts, so its files replace our stub).
+echo "Restoring real akmods binary..."
+dnf5 reinstall -y akmods || dnf5 install -y akmods
 
 # Explicitly enable NVIDIA driver services (image contract, no first-boot detection)
 systemctl enable --no-reload nvidia-persistenced.service
