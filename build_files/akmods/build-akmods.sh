@@ -56,6 +56,14 @@ fi
 if [ ! -f /etc/pki/akmods/certs/public_key.der ]; then
     kmodgenca -a --force 2>/dev/null || true
 fi
+# Ensure private key is readable by root (sign-file runs as root during %install)
+chmod 0600 /etc/pki/akmods/private/private_key.priv 2>/dev/null || true
+chown root:root /etc/pki/akmods/private/private_key.priv 2>/dev/null || true
+# Also generate the public_key.x509.cer (DER) counterpart sign-file expects
+if [ -f /etc/pki/akmods/certs/public_key.der ] && [ ! -f /etc/pki/akmods/certs/public_key.x509.cer ]; then
+    cp /etc/pki/akmods/certs/public_key.der /etc/pki/akmods/certs/public_key.x509.cer
+fi
+chmod 0644 /etc/pki/akmods/certs/* 2>/dev/null || true
 
 # Out-of-tree kmods against kernel-cachyos-lto (Clang+ThinLTO) are traditionally built
 # with the system GCC; CachyOS-LTO exports correct ARCH/COMPILER flags so modules link.
@@ -104,6 +112,9 @@ if [ -x /usr/sbin/akmodscheck ]; then
     printf '#!/bin/bash\nexit 0\n' > /usr/sbin/akmodscheck
     chmod +x /usr/sbin/akmodscheck
 fi
+
+# Double-check signing key is accessible
+ls -la /etc/pki/akmods/private/ /etc/pki/akmods/certs/ || true
 
 # Build all required kmods. Run as root (we need to install RPMs); akmods uses runuser
 # internally (shimmed to setpriv) to compile as akmods user.
