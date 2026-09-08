@@ -34,6 +34,11 @@ export DAKMODS_DISABLE_AUTO_BUILD=1
 # Override RPM scriptlet failure so even if %post barfs, transaction completes
 export RPM_SCRIPTLET_FAILURE_ACTION=warn
 
+# Pre-create akmods user/group since tsflags=noscripts skips RPM sysusers.
+getent group akmods >/dev/null || groupadd -r akmods
+id akmods >/dev/null 2>&1 || useradd -r -g akmods -d /var/lib/akmods -s /sbin/nologin akmods
+install -d -o akmods -g akmods -m 0755 /var/cache/akmods /var/lib/akmods
+
 echo "Installing NVIDIA open kernel driver + userspace (auto-build stubbed)..."
 dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
     akmod-nvidia nvidia-driver nvidia-driver-libs nvidia-driver-cuda \
