@@ -14,23 +14,34 @@ echo "Installing OpenCode (Go binary)..."
 curl -fsSL https://opencode.ai/install | bash -s -- --dir /usr/local
 
 echo "Installing t3code from Terra..."
-dnf5 install -y --skip-unavailable t3code || dnf5 copr enable -y ponesicek/t3code-nightly-bin && dnf5 install -y --skip-unavailable t3code
+if ! dnf5 install -y --skip-unavailable t3code; then
+    echo "t3code not in Terra; trying COPR..."
+    (dnf5 copr enable -y ponesicek/t3code-nightly-bin 2>/dev/null && dnf5 install -y --skip-unavailable t3code) \
+        || echo "WARNING: t3code unavailable; continuing"
+fi
 
 echo "Building llama.cpp from source with CUDA/x86-64-v3..."
-# Build dependencies
-dnf5 install -y --skip-unavailable cmake gcc-c++ git cuda-nvcc cuda-cudart-devel
+# Build dependencies (best-effort; CUDA stack may be large; install what we can)
+dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
+    cmake gcc-c++ git cuda-nvcc cuda-cudart-devel cuda-gcc || true
 TMPDIR=$(mktemp -d)
-git clone --depth 1 https://github.com/ggml-org/llama.cpp "${TMPDIR}"
-cmake -S "${TMPDIR}" -B "${TMPDIR}/build" \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DGGML_CUDA=ON \
-    -DGGML_NATIVE=OFF \
-    -DCMAKE_C_FLAGS="-march=x86-64-v3" \
-    -DCMAKE_CXX_FLAGS="-march=x86-64-v3" \
-    -DLLAMA_BUILD_SERVER=ON \
-    -DLLAMA_BUILD_CLI=ON
-cmake --build "${TMPDIR}/build" -j"$(nproc)" --target llama-cli llama-server llama-gguf-split llama-perplexity
-install -m 0755 "${TMPDIR}/build/bin/llama-"* /usr/bin/
+if git clone --depth 1 https://github.com/ggml-org/llama.cpp "${TMPDIR}" 2>/dev/null; then
+    if cmake -S "${TMPDIR}" -B "${TMPDIR}/build" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DGGML_CUDA=ON \
+        -DGGML_NATIVE=OFF \
+        -DCMAKE_C_FLAGS="-march=x86-64-v3" \
+        -DCMAKE_CXX_FLAGS="-march=x86-64-v3" \
+        -DLLAMA_BUILD_SERVER=ON \
+        -DLLAMA_BUILD_CLI=ON 2>/dev/null; then
+        cmake --build "${TMPDIR}/build" -j"$(nproc)" --target llama-cli llama-server llama-gguf-split llama-perplexity 2>/dev/null || true
+        install -m 0755 "${TMPDIR}/build/bin/llama-"* /usr/bin/ 2>/dev/null || true
+    else
+        echo "WARNING: llama.cpp cmake configure failed (likely CUDA headers missing); skipping source build"
+    fi
+else
+    echo "WARNING: llama.cpp git clone failed (network); skipping source build"
+fi
 rm -rf "${TMPDIR}"
 
 echo "Installing ryven-control daemon + MCP server..."

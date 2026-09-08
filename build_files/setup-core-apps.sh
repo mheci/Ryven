@@ -5,10 +5,10 @@ try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; 
 set -euo pipefail
 
 echo "Enabling COPRs for third-party packages..."
-(dnf5 copr enable -y 2>/dev/null dnf5 copr enable -ydnf5 copr enable -y echo "COPR enabled") || echo "COPR unavailable (skipping):" faugus/faugus-launcher
-(dnf5 copr enable -y 2>/dev/null dnf5 copr enable -ydnf5 copr enable -y echo "COPR enabled") || echo "COPR unavailable (skipping):" wehagy/protonplus
-(dnf5 copr enable -y 2>/dev/null dnf5 copr enable -ydnf5 copr enable -y echo "COPR enabled") || echo "COPR unavailable (skipping):" sneexy/zen-browser
-(dnf5 copr enable -y 2>/dev/null dnf5 copr enable -ydnf5 copr enable -y echo "COPR enabled") || echo "COPR unavailable (skipping):" errornointernet/quickshell
+(dnf5 copr enable -y faugus/faugus-launcher 2>/dev/null && echo "faugus/faugus-launcher COPR enabled") || echo "WARNING: faugus/faugus-launcher COPR unavailable"
+(dnf5 copr enable -y wehagy/protonplus 2>/dev/null && echo "wehagy/protonplus COPR enabled") || echo "WARNING: wehagy/protonplus COPR unavailable"
+(dnf5 copr enable -y sneexy/zen-browser 2>/dev/null && echo "sneexy/zen-browser COPR enabled") || echo "WARNING: sneexy/zen-browser COPR unavailable"
+(dnf5 copr enable -y errornointernet/quickshell 2>/dev/null && echo "errornointernet/quickshell COPR enabled") || echo "WARNING: errornointernet/quickshell COPR unavailable"
 
 # Brave repo
 dnf5 config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo || true
@@ -18,7 +18,7 @@ echo "Installing core CLI utilities..."
 dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
     bash-completion starship eza fd-find ripgrep bat fzf zoxide htop btop nvtop duf ncdu \
     git git-lfs gh just jq yq curl wget direnv lazygit \
-    distrobox podman fuse-overlayfs ujust ublue-os-just \
+    ujust ublue-os-just \
     grim slurp swappy wf-recorder cliphist nwg-displays wlogout \
     pavucontrol blueman network-manager-applet polkit-gnome system-config-printer udisks2 \
     gvfs gvfs-smb gvfs-mtp gvfs-afc p7zip unar unzip xz zstd ark
