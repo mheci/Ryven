@@ -5,7 +5,7 @@ try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; 
 set -euo pipefail
 shopt -s nullglob
 
-systemctl enable --no-reload firewalld.service
+systemctl enable --no-reload firewalld.service 2>/dev/null || true
 firewall-offline-cmd --set-default-zone=workstation
 # mDNS/Bonjour/LAN discovery
 firewall-offline-cmd --add-service=mdns

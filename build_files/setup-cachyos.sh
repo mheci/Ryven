@@ -43,8 +43,25 @@ else
         echo "WARNING: ananicy-cpp unavailable; continuing without daemon"
 fi
 
-# scx_lavd is provided by scx-scheds-git (not a separate package). Create the systemd service for it.
-# If scx_lavd binary isn't found, scheduler fallback to scx_loader invocation is used.
+# scx_lavd is provided by scx-scheds-git. Install a default scx_lavd systemd unit if not shipped by the package.
+if ! [ -f /usr/lib/systemd/system/scx_lavd.service ]; then
+    cat > /usr/lib/systemd/system/scx_lavd.service <<'UNIT'
+[Unit]
+Description=sched-ext LAVD scheduler
+Documentation=https://github.com/sched-ext/scx
+After=systemd-remount-fs.service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/scx_lavd
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+fi
+systemctl enable --no-reload scx_lavd.service 2>/dev/null || true
 
 # Version lock so dnf updates never pull stock Fedora kernel
 dnf5 versionlock add kernel-cachyos-lto kernel-cachyos-lto-devel-matched

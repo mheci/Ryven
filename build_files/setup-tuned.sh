@@ -6,19 +6,19 @@ set -euo pipefail
 shopt -s nullglob
 
 # Mask power-profiles-daemon (tuned-ppd replaces it)
-systemctl mask --no-reload power-profiles-daemon.service
+systemctl mask --no-reload power-profiles-daemon.service 2>/dev/null || true
 
 # Install tuned + tuned-ppd + desktop OOM (nohang replaces systemd-oomd)
 dnf5 install -y --skip-unavailable tuned tuned-ppd nohang
-systemctl mask --no-reload systemd-oomd.service systemd-oomd.socket
-systemctl enable --no-reload tuned.service nohang-desktop.service scx_lavd.service
+systemctl mask --no-reload systemd-oomd.service systemd-oomd.socket 2>/dev/null || true
+systemctl enable --no-reload tuned.service nohang-desktop.service 2>/dev/null || true
 
 # Copy tuned profile from our system_files
 cp -r system_files/common/usr/lib/tuned/ryven-gaming /usr/lib/tuned/
 # tuned-adm profile tries to talk to DBus/tuned daemon which doesn't run in container; set default via symlink
 ln -sf /usr/lib/tuned/ryven-gaming /etc/tuned/active_profile 2>/dev/null || true
 echo "ryven-gaming" > /etc/tuned/active_profile 2>/dev/null || true
-tuned-adm profile ryven-gaming 2>/dev/null || echo "(tuned daemon not running in container; profile set via active_profile)"
+tuned-adm profile ryven-gaming >/dev/null 2>&1 || echo "(tuned daemon not running in container; profile set via active_profile file)"
 
 # Copy system configs
 # Copy config files safely (use for loops so empty globs don't cause cp errors)
@@ -50,4 +50,4 @@ systemctl mask --no-reload systemd-coredump.socket systemd-coredump.service 2>/d
 # Wireplumber ordering for NVIDIA HDMI audio
 cp build_files/wireplumber-after-nvidia.conf /usr/lib/systemd/user/wireplumber.service.d/ 2>/dev/null || mkdir -p /usr/lib/systemd/user/wireplumber.service.d/
 
-echo "Tuned/ryven-gaming profile active: $(tuned-adm active)"
+echo "Tuned/ryven-gaming profile active: $(cat /etc/tuned/active_profile) (container build; tuned daemon not running)"
