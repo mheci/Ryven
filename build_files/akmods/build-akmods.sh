@@ -114,16 +114,41 @@ for mod in nvidia xone xpadneo openrazer; do
         echo "  (no src.rpm found for ${mod}; skipping)"
         continue
     fi
-    if akmods --force --kernels "${KERNEL_VERSION}" --akmod "${mod}" 2>&1; then
+    # Capture full akmods output to detect real success (it returns 0 even on
+    # "[FAILED]" because the post-step says "You can try to rebuild").
+    BUILD_LOG=$(mktemp)
+    BUILD_OK=0
+    set +e
+    akmods --force --kernels "${KERNEL_VERSION}" --akmod "${mod}" > "${BUILD_LOG}" 2>&1
+    RC=$?
+    set -e
+    cat "${BUILD_LOG}"
+    if [ $RC -eq 0 ] && grep -qE "Building and installing[^]]*\[(OK|SUCCESS)\]" "${BUILD_LOG}"; then
         echo "  ${mod} built via akmods"
-    elif akmodsbuild --kernels "${KERNEL_VERSION}" "${SRPM}" 2>&1; then
-        echo "  ${mod} built via akmodsbuild"
+        BUILD_OK=1
+    elif grep -qiE "Build completed successfully|Installing.*kmod.*\[  OK  \]|\.rpm\.signed" "${BUILD_LOG}"; then
+        echo "  ${mod} built via akmods (output-detected)"
+        BUILD_OK=1
     else
-        # Dump failure log for debugging, but don't hard-fail for nvidia yet (log it)
+        # Try akmodsbuild directly
+        set +e
+        akmodsbuild --kernels "${KERNEL_VERSION}" "${SRPM}" > "${BUILD_LOG}" 2>&1
+        RC2=$?
+        set -e
+        cat "${BUILD_LOG}"
+        if [ $RC2 -eq 0 ] && ! grep -qiE "error:|fatal error" "${BUILD_LOG}"; then
+            echo "  ${mod} built via akmodsbuild"
+            BUILD_OK=1
+        fi
+    fi
+    rm -f "${BUILD_LOG}"
+
+    if [ "${BUILD_OK}" -ne 1 ]; then
+        # Dump failure log for debugging
         FAIL_LOG=$(ls /var/cache/akmods/"${mod}"/*failed.log 2>/dev/null | tail -n1 || echo "")
         if [ -n "${FAIL_LOG}" ]; then
             echo "===== ${mod} FAILED LOG (${FAIL_LOG}) ====="
-            tail -n 80 "${FAIL_LOG}" 2>/dev/null || true
+            tail -n 120 "${FAIL_LOG}" 2>/dev/null || true
             echo "===== END FAILED LOG ====="
         fi
         if [ "${mod}" = "nvidia" ]; then
