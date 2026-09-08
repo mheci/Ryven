@@ -18,17 +18,18 @@ dnf5 config-manager enable terra-mesa terra-extras terra-nvidia 2>/dev/null || t
 # Terra higher priority than RPMFusion for codec/mesa packages (dnf5 setopt)
 dnf5 config-manager setopt terra.priority=50 terra-mesa.priority=40 --save 2>/dev/null || true
 
-echo "Installing NVIDIA open kernel driver + userspace..."
-dnf5 install -y --skip-unavailable \
+echo "Installing NVIDIA open kernel driver + userspace (no %post auto-build; we build kmods explicitly)..."
+dnf5 install -y --skip-unavailable --setopt tsflags=notriggers \
     akmod-nvidia nvidia-driver nvidia-driver-libs nvidia-driver-cuda \
     nvidia-driver-libs.i686 nvidia-driver-cuda.i686 \
     nvidia-gpu-firmware nvidia-modprobe nvidia-persistenced nvidia-settings \
     nvidia-vaapi-driver libva-utils vdpauinfo nv-codec-headers \
     mesa-vaapi-drivers mesa-vdpau-drivers
 
-echo "Installing third-party akmods..."
+echo "Installing third-party akmods (no triggers)..."
 dnf5 copr enable -y atim/xone
-dnf5 install -y --skip-unavailable xone akmod-xone xpadneo akmod-xpadneo openrazer akmod-openrazer
+dnf5 install -y --skip-unavailable --setopt tsflags=notriggers \
+    xone akmod-xone xpadneo akmod-xpadneo openrazer akmod-openrazer
 
 # Explicitly enable NVIDIA driver services (image contract, no first-boot detection)
 systemctl enable --no-reload nvidia-persistenced.service

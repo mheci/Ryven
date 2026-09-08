@@ -53,11 +53,19 @@ WRAP
 chmod +x "${WRAPDIR}/runuser"
 export PATH="${WRAPDIR}:${PATH}"
 
-# Build all required kmods
-akmods --kernels "${KERNEL_VERSION}" --akmod nvidia
-akmods --kernels "${KERNEL_VERSION}" --akmod xone
-akmods --kernels "${KERNEL_VERSION}" --akmod xpadneo
-akmods --kernels "${KERNEL_VERSION}" --akmod openrazer
+# Ensure akmods user exists (created by akmods package; create if not)
+id akmods &>/dev/null || useradd -r -s /sbin/nologin -d /var/lib/akmods -G rpm akmods 2>/dev/null || true
+install -d -o akmods -g akmods -m 0755 /var/cache/akmods /var/lib/akmods /tmp/akmodsbuild 2>/dev/null || true
+
+# Build all required kmods: akmods refuses to run as root in container builds.
+# We already install akmod-nvidia with --setopt=tsflags=notriggers to skip its %post.
+# Run akmodsbuild (the direct builder) as akmods user with Clang/LLVM env.
+for mod in nvidia xone xpadneo openrazer; do
+    echo "==> Building akmod: ${mod}"
+    setpriv --reuid=akmods --regid=akmods --clear-groups --inh-caps=-all -- \
+        akmodsbuild --kernels "${KERNEL_VERSION}" /usr/src/akmods/"${mod}"-kmod*.src.rpm \
+        || (echo "ERROR: akmod ${mod} build failed"; exit 1)
+done
 
 # Verify builds succeeded
 for mod in nvidia xone xpadneo openrazer; do
