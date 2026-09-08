@@ -5,6 +5,13 @@ try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; 
 set -euo pipefail
 shopt -s nullglob
 
+# Early container setup: create machine-id, /opt, required dirs so third-party RPMs and dconf work
+mkdir -p /etc /var/lib/dbus /opt /root/.cache /root/.config
+if ! [ -s /etc/machine-id ]; then
+    dbus-uuidgen --ensure=/etc/machine-id 2>/dev/null || systemd-machine-id-setup 2>/dev/null || echo "unset" >/etc/machine-id
+fi
+ln -sf /etc/machine-id /var/lib/dbus/machine-id 2>/dev/null || true
+
 # Mask power-profiles-daemon (tuned-ppd replaces it)
 systemctl mask --no-reload power-profiles-daemon.service 2>/dev/null || true
 
@@ -52,7 +59,10 @@ rm -f /usr/lib/systemd/zram-generator.conf 2>/dev/null || true
 # Coredump disable
 systemctl mask --no-reload systemd-coredump.socket systemd-coredump.service 2>/dev/null || true
 
-# Wireplumber ordering for NVIDIA HDMI audio
-cp build_files/wireplumber-after-nvidia.conf /usr/lib/systemd/user/wireplumber.service.d/ 2>/dev/null || mkdir -p /usr/lib/systemd/user/wireplumber.service.d/
+# Wireplumber ordering for NVIDIA HDMI audio (create override dir; best-effort)
+mkdir -p /usr/lib/systemd/user/wireplumber.service.d/ 2>/dev/null || true
+if [ -f build_files/wireplumber-after-nvidia.conf ]; then
+    cp build_files/wireplumber-after-nvidia.conf /usr/lib/systemd/user/wireplumber.service.d/
+fi
 
 echo "Tuned/ryven-gaming profile active: $(cat /etc/tuned/active_profile) (container build; tuned daemon not running)"

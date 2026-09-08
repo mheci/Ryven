@@ -6,17 +6,20 @@ set -euo pipefail
 shopt -s nullglob
 
 # Fontconfig defaults (Inter UI, JetBrains Mono, RGB subpixel, hintslight)
-cp system_files/common/etc/fonts/local.conf /etc/fonts/local.conf
-fc-cache -f
+[ -f system_files/common/etc/fonts/local.conf ] && cp system_files/common/etc/fonts/local.conf /etc/fonts/local.conf
+fc-cache -f 2>&1 || echo "(fc-cache failed; fonts will be cached at first login)"
 
-# Default dconf/Gsettings for dark theme (applies in both DEs)
+# Default dconf/Gsettings for dark theme (applies in both DEs). Requires a writable HOME and may fail without dbus; non-fatal.
+mkdir -p /root/.cache/dconf /root/.config/dconf
 if command -v dconf &>/dev/null; then
-    dconf write /org/gnome/desktop/interface/color-scheme "'prefer-dark'"
-    dconf write /org/gnome/desktop/interface/gtk-theme "'catppuccin-mocha-mauve-standard+default'"
-    dconf write /org/gnome/desktop/interface/icon-theme "'Papirus-Dark'"
-    dconf write /org/gnome/desktop/interface/cursor-theme "'Bibata-Modern-Ice'"
-    dconf write /org/gnome/desktop/interface/font-name "'Inter 10'"
-    dconf write /org/gnome/desktop/interface/monospace-font-name "'JetBrains Mono 10'"
+    # Note: dconf requires dbus-daemon (machine-id + session bus); skip in container if bus unavailable.
+    (dbus-run-session -- dconf write /org/gnome/desktop/interface/color-scheme "'prefer-dark'" 2>/dev/null && \
+     dbus-run-session -- dconf write /org/gnome/desktop/interface/gtk-theme "'catppuccin-mocha-mauve-standard+default'" 2>/dev/null && \
+     dbus-run-session -- dconf write /org/gnome/desktop/interface/icon-theme "'Papirus-Dark'" 2>/dev/null && \
+     dbus-run-session -- dconf write /org/gnome/desktop/interface/cursor-theme "'Bibata-Modern-Ice'" 2>/dev/null && \
+     dbus-run-session -- dconf write /org/gnome/desktop/interface/font-name "'Inter 10'" 2>/dev/null && \
+     dbus-run-session -- dconf write /org/gnome/desktop/interface/monospace-font-name "'JetBrains Mono 10'" 2>/dev/null) \
+        || echo "(dconf writes skipped in container; theme defaults applied via skel/gtkrc at login)"
 fi
 
 # Copy skel defaults to /etc/skel (skel is at /tmp/skel per Containerfile)

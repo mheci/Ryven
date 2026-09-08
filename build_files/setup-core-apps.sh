@@ -17,6 +17,8 @@ rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
 
 # Helper: best-effort package install (failing packages don't break the build).
 inst() {
+    # Pre-create /opt so third-party packages (Zen, Brave, etc.) that unpack into /opt don't fail on missing dir
+    mkdir -p /opt
     dnf5 install -y --skip-unavailable --setopt=strict=0 --setopt install_weak_deps=False "$@" 2>&1 || true
 }
 
@@ -35,7 +37,17 @@ echo "Installing file manager / utilities..."
 inst pcmanfm-qt tumbler thunar-archive-plugin
 
 echo "Installing browsers..."
-inst firefox zen-browser brave-browser
+# firefox is from Fedora base.
+# NOTE: zen-browser (sneexy COPR) and brave-browser (official RPM) both install under /opt
+# which in rpm-ostree OCI builds uses a special composefs/0755 layout that causes
+# "cpio: mkdir failed - File exists" when running inside a container build. Install them
+# via Flatpak (preinstalled user-facing) or via ujust post-rebase. For the base image
+# we only ship Firefox; Brave/Zen users can flatpak install or add the repo post-boot.
+inst firefox
+# Still enable the COPRs/repos so users get them via `dnf install` post-rebase (no harm done)
+(dnf5 copr enable -y sneexy/zen-browser 2>/dev/null) || true
+# brave repo is already enabled earlier
+echo "(Brave/Zen repos enabled; browsers installable post-rebase via flatpak or dnf)"
 
 echo "Installing gaming launchers + multilib Wine..."
 inst steam faugus-launcher heroic-games-launcher protonplus umu-launcher vesktop \
