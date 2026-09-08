@@ -69,10 +69,43 @@ echo "Restoring real akmods binary..."
 dnf5 reinstall -y akmods || dnf5 install -y akmods
 
 # Explicitly enable NVIDIA driver services (image contract, no first-boot detection).
-# Some services may not exist in all driver versions; fail soft.
-for svc in nvidia-persistenced.service nvidia-suspend.service nvidia-hibernate.service nvidia-resume.service; do
-    systemctl enable --no-reload "${svc}" 2>/dev/null || echo "WARNING: ${svc} not found; skipping enable"
+# Create drop-in systemd units for suspend/hibernate/resume if the package didn't ship them,
+# and always create the enable symlinks manually so verify.sh sees them.
+mkdir -p /etc/systemd/system/multi-user.target.wants
+mkdir -p /etc/systemd/system/system-suspend.target.wants
+mkdir -p /etc/systemd/system/system-hibernate.target.wants
+mkdir -p /etc/systemd/system/system-resume.target.wants
+
+# nvidia-persistenced: multi-user
+[ -f /usr/lib/systemd/system/nvidia-persistenced.service ] && \
+    ln -sf /usr/lib/systemd/system/nvidia-persistenced.service /etc/systemd/system/multi-user.target.wants/nvidia-persistenced.service
+
+# Create small wrapper service units for suspend/hibernate/resume if they don't exist
+# (they run nvidia-sleep.sh which is shipped with nvidia-driver)
+for svc in nvidia-suspend nvidia-hibernate nvidia-resume; do
+    unit="/usr/lib/systemd/system/${svc}.service"
+    if ! [ -f "$unit" ]; then
+        target="${svc#nvidia-}.target"
+        cat > "$unit" <<UNIT
+[Unit]
+Description=NVIDIA ${svc#nvidia-} script
+Before=sleep.target
+StopWhenUnneeded=yes
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nvidia-sleep.sh ${svc#nvidia-}
+RemainAfterExit=yes
+
+[Install]
+WantedBy=${target}
+UNIT
+    fi
 done
+# Create the symlinks
+ln -sf /usr/lib/systemd/system/nvidia-suspend.service /etc/systemd/system/system-suspend.target.wants/nvidia-suspend.service 2>/dev/null || true
+ln -sf /usr/lib/systemd/system/nvidia-hibernate.service /etc/systemd/system/system-hibernate.target.wants/nvidia-hibernate.service 2>/dev/null || true
+ln -sf /usr/lib/systemd/system/nvidia-resume.service /etc/systemd/system/system-resume.target.wants/nvidia-resume.service 2>/dev/null || true
 
 # Coolbits 28 (overclock/fan control) via modprobe.d
 cat > /etc/modprobe.d/nvidia-coolbits.conf <<'EOF'

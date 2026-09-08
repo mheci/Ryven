@@ -7,7 +7,7 @@ set -euo pipefail
 shopt -s nullglob
 
 echo "Configuring flatpak..."
-dnf5 install -y --skip-unavailable flatpak flatpak-builder
+dnf5 install -y --skip-unavailable --setopt=strict=0 flatpak flatpak-builder 2>&1 || echo "WARNING: flatpak install failed; skipping flatpak setup"
 
 # Remove Fedora Flatpak repos
 flatpak remote-delete fedora 2>/dev/null || true

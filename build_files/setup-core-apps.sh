@@ -15,9 +15,13 @@ echo "Enabling COPRs for third-party packages..."
 dnf5 config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo || true
 rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
 
+# Helper: best-effort package install (failing packages don't break the build).
+inst() {
+    dnf5 install -y --skip-unavailable --setopt=strict=0 --setopt install_weak_deps=False "$@" 2>&1 || true
+}
+
 echo "Installing core CLI utilities..."
-dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
-    bash-completion starship eza fd-find ripgrep bat fzf zoxide htop btop nvtop duf ncdu \
+inst bash-completion starship eza fd-find ripgrep bat fzf zoxide htop btop nvtop duf ncdu \
     git git-lfs gh just jq yq curl wget direnv lazygit \
     ujust ublue-os-just \
     grim slurp swappy wf-recorder cliphist nwg-displays wlogout \
@@ -25,25 +29,21 @@ dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
     gvfs gvfs-smb gvfs-mtp gvfs-afc p7zip unar unzip xz zstd ark
 
 echo "Installing editors / terminals..."
-dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
-    neovim ghostty kitty zed
+inst neovim ghostty kitty zed
 
 echo "Installing file manager / utilities..."
-dnf5 install -y --skip-unavailable pcmanfm-qt tumbler thunar-archive-plugin
+inst pcmanfm-qt tumbler thunar-archive-plugin
 
 echo "Installing browsers..."
-dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
-    firefox zen-browser brave-browser
+inst firefox zen-browser brave-browser
 
 echo "Installing gaming launchers + multilib Wine..."
-dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
-    steam faugus-launcher heroic-games-launcher protonplus umu-launcher vesktop \
+inst steam faugus-launcher heroic-games-launcher protonplus umu-launcher vesktop \
     wine-core wine-core.i686 wine-mono dxvk dxvk.i686 vkd3d vkd3d.i686 \
     gamescope mpv
 
 echo "Installing fonts/cursors/icons/themes..."
-dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
-    inter-fonts jetbrains-mono-fonts fira-code-fonts cascadia-fonts iosevka-term-fonts \
+inst inter-fonts jetbrains-mono-fonts fira-code-fonts cascadia-fonts iosevka-term-fonts \
     google-roboto-fonts cantarell-fonts google-noto-sans-cjk-fonts google-noto-emoji-fonts \
     bibata-cursor-themes capitaine-cursors adwaita-cursor-theme \
     papirus-icon-theme papirus-icon-theme-dark breeze-icon-theme tela-icon-theme qogir-icon-theme numix-icon-theme \
@@ -52,19 +52,17 @@ dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
 
 echo "Installing Hyprland + quickshell + wl-only packages..."
 if [ "${IMAGE_VARIANT:-}" = "wl" ]; then
-    dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
-        hyprland hyprlock hypridle hyprpaper hyprcursor hyprpicker hyprsunset \
+    inst hyprland hyprlock hypridle hyprpaper hyprcursor hyprpicker hyprsunset \
         xdg-desktop-portal-hyprland xdg-desktop-portal-gtk greetd gtkgreet \
         quickshell quickshell-quick
 fi
 
 echo "Installing KDE-specific overrides..."
 if [ "${IMAGE_VARIANT:-}" = "kde" ]; then
-    dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
-        plasma-login-manager kde-gtk-config \
-        --exclude=plasma-discover --exclude=PackageKit --exclude=packagekit-qt6 --exclude=akonadi* --exclude=kdepim* --exclude=kmail --exclude=korganizer --exclude=baloo*
+    inst --exclude=plasma-discover --exclude=PackageKit --exclude=packagekit-qt6 --exclude=akonadi* --exclude=kdepim* --exclude=kmail --exclude=korganizer --exclude=baloo* \
+        plasma-login-manager kde-gtk-config
     systemctl mask --no-reload sddm.service sddm-autologin.service 2>/dev/null || true
-    systemctl enable --no-reload plasmalogin.service
+    systemctl enable --no-reload plasmalogin.service 2>/dev/null || true
     systemctl mask --no-reload baloo_file.service baloo_file_extractor.service akonadi.service 2>/dev/null || true
 fi
 

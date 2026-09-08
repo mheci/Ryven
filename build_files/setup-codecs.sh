@@ -22,7 +22,7 @@ dnf5 install -y --skip-unavailable --skip-broken --setopt=strict=0 --setopt inst
     nv-codec-headers libvdpau-va-gl \
     x264-libs x265-libs \
     mpv \
-    openh264 mozilla-openh264 2>&1 || true
+    openh264 mozilla-openh264 2>&1 || echo "WARNING: some codec packages failed to install; continuing"
 
 # Firefox VA-API policy (enforce hardware decode, uBlock Origin, Wayland)
 mkdir -p /usr/lib/firefox/distribution
