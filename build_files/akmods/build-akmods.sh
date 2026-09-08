@@ -2,6 +2,7 @@
 # Build all required akmods against the currently installed CachyOS-LTO kernel.
 # Uses Clang/LLVM/ThinLTO-compatible flags directly (no patching of system scripts).
 set -euo pipefail
+shopt -s nullglob
 
 KERNEL_VERSION="$(rpm -q kernel-cachyos-lto --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}\n' | head -n1)"
 echo "Building akmods for kernel: ${KERNEL_VERSION}"

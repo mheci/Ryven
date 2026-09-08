@@ -4,6 +4,7 @@ try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; 
 # Configure flatpak: remove Fedora flatpak repo, enable Flathub, install Bazaar + Flatseal,
 # apply global host theme overrides, install matching NVIDIA GL extensions.
 set -euo pipefail
+shopt -s nullglob
 
 echo "Configuring flatpak..."
 dnf5 install -y --skip-unavailable flatpak flatpak-builder

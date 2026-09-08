@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # prove-it-works: runs at end of build; FAILS THE BUILD on any assertion.
 set -euo pipefail
+shopt -s nullglob
 
 pass() { echo "✓ $*"; }
 fail() { echo "✗ $*" >&2; exit 1; }

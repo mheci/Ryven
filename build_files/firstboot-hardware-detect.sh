@@ -2,6 +2,7 @@
 # Runs once at first boot: writes CPU-specific kargs to /etc/kernel/cmdline.d/, adds user to groups.
 # Idempotent (multiple runs produce the same state).
 set -euo pipefail
+shopt -s nullglob
 
 MARKER="/etc/ryven-hardware.toml"
 if [ -f "${MARKER}" ]; then

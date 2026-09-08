@@ -3,6 +3,7 @@
 try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; done; return 1; }
 # Enable RPMFusion/Terra-nvidia, install NVIDIA open driver stack, configure services.
 set -euo pipefail
+shopt -s nullglob
 
 KERNEL_VERSION="$(rpm -q kernel-cachyos-lto --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}\n' | head -n1)"
 

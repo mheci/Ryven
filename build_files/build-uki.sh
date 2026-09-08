@@ -2,6 +2,7 @@
 # Build and sign a Unified Kernel Image for the installed CachyOS-LTO kernel.
 # Produces /boot/EFI/Linux/ryven-<kernel-ver>.efi (signed).
 set -euo pipefail
+shopt -s nullglob
 
 KERNEL_VERSION="$(rpm -q kernel-cachyos-lto --queryformat '%{VERSION}-%{RELEASE}.%{ARCH}\n' | head -n1)"
 UKI_PATH="/boot/EFI/Linux/ryven-${KERNEL_VERSION}.efi"

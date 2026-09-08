@@ -3,6 +3,7 @@
 try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; done; return 1; }
 # Install default Ryven dark (Catppuccin Mocha) theme defaults, fontconfig.
 set -euo pipefail
+shopt -s nullglob
 
 # Fontconfig defaults (Inter UI, JetBrains Mono, RGB subpixel, hintslight)
 cp system_files/common/etc/fonts/local.conf /etc/fonts/local.conf

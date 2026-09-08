@@ -3,6 +3,7 @@
 try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; done; return 1; }
 # Install AI runtime: Pi, OpenCode, llama.cpp (CUDA build), t3code, ryven-control, MCP server.
 set -euo pipefail
+shopt -s nullglob
 
 echo "Installing Node.js (for Pi)..."
 dnf5 install -y --skip-unavailable nodejs npm

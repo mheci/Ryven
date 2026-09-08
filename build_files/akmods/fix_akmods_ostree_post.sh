@@ -2,6 +2,7 @@
 # Patches /usr/sbin/akmods-ostree-post for CachyOS LTO/Clang kmod builds.
 # Applied at image build time before any akmods run.
 set -euo pipefail
+shopt -s nullglob
 
 TARGET="/usr/sbin/akmods-ostree-post"
 cp -a "${TARGET}" "${TARGET}.orig"

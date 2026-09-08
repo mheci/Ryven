@@ -9,6 +9,7 @@ export SYSTEMD_OFFLINE=1
 # Enable CachyOS COPR, swap stock Fedora kernel for kernel-cachyos-lto, install CachyOS addons.
 # CachyOS addons (schedulers/ananicy/settings) live in a SEPARATE COPR: bieszczaders/kernel-cachyos-addons.
 set -euo pipefail
+shopt -s nullglob
 
 echo "Enabling bieszczaders/kernel-cachyos-lto COPR..."
 (dnf5 -y copr enable bieszczaders/kernel-cachyos-lto 2>/dev/null && echo "bieszczaders/kernel-cachyos-lto COPR enabled") || echo "WARNING: bieszczaders/kernel-cachyos-lto COPR unavailable"
