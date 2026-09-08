@@ -5,10 +5,10 @@ try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; 
 set -euo pipefail
 
 echo "Enabling COPRs for third-party packages..."
-dnf5 copr enable -y faugus/faugus-launcher
-dnf5 copr enable -y wehagy/protonplus
-dnf5 copr enable -y sneexy/zen-browser
-dnf5 copr enable -y errornointernet/quickshell
+(dnf5 copr enable -y 2>/dev/null dnf5 copr enable -ydnf5 copr enable -y echo "COPR enabled") || echo "COPR unavailable (skipping):" faugus/faugus-launcher
+(dnf5 copr enable -y 2>/dev/null dnf5 copr enable -ydnf5 copr enable -y echo "COPR enabled") || echo "COPR unavailable (skipping):" wehagy/protonplus
+(dnf5 copr enable -y 2>/dev/null dnf5 copr enable -ydnf5 copr enable -y echo "COPR enabled") || echo "COPR unavailable (skipping):" sneexy/zen-browser
+(dnf5 copr enable -y 2>/dev/null dnf5 copr enable -ydnf5 copr enable -y echo "COPR enabled") || echo "COPR unavailable (skipping):" errornointernet/quickshell
 
 # Brave repo
 dnf5 config-manager addrepo --from-repofile=https://brave-browser-rpm-release.s3.brave.com/brave-browser.repo || true

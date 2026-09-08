@@ -11,9 +11,9 @@ export SYSTEMD_OFFLINE=1
 set -euo pipefail
 
 echo "Enabling bieszczaders/kernel-cachyos-lto COPR..."
-dnf5 -y copr enable bieszczaders/kernel-cachyos-lto
+(dnf5 -y copr enable 2>/dev/null dnf5 -y copr enablednf5 -y copr enable echo "COPR enabled") || echo "COPR unavailable:" bieszczaders/kernel-cachyos-lto
 echo "Enabling bieszczaders/kernel-cachyos-addons COPR..."
-dnf5 -y copr enable bieszczaders/kernel-cachyos-addons
+(dnf5 -y copr enable 2>/dev/null dnf5 -y copr enablednf5 -y copr enable echo "COPR enabled") || echo "COPR unavailable:" bieszczaders/kernel-cachyos-addons
 
 echo "Installing CachyOS kernel..."
 rpm-ostree override remove kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra kernel-devel kernel-devel-matched 2>/dev/null || true

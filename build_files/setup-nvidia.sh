@@ -43,9 +43,15 @@ dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
     mesa-vaapi-drivers mesa-vdpau-drivers
 
 echo "Installing third-party akmods..."
-dnf5 copr enable -y atim/xone
+# xone (Xbox One dongle) — try atim/xone COPR; may not exist for new Fedora releases (404).
+# Fall back to RPMFusion/Fedora's xone if available, else skip (--skip-unavailable).
+( dnf5 copr enable -y atim/xone 2>/dev/null && echo "atim/xone COPR enabled" ) \
+    || echo "atim/xone COPR unavailable (404) for this Fedora release; using RPMFusion xpad/xone if available"
 dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
-    xone akmod-xone xpadneo akmod-xpadneo openrazer akmod-openrazer
+    xone akmod-xone xpadneo akmod-xpadneo openrazer akmod-openrazer \
+    || dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
+        xpadneo akmod-xpadneo openrazer akmod-openrazer \
+        || echo "WARNING: some third-party akmods unavailable; continuing"
 
 # Now restore the real akmods binary by reinstalling akmods (this time without
 # noscripts, so its files replace our stub).
