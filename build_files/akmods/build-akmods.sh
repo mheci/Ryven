@@ -113,7 +113,12 @@ if [ -x /usr/sbin/akmodscheck ]; then
     chmod +x /usr/sbin/akmodscheck
 fi
 
-# Double-check signing key is accessible
+# brp-kmodsign invokes sign-file as the akmods user (via runuser). Our PATH shim converts
+# runuser to setpriv which drops to akmods user; the private key at /etc/pki/akmods/private/
+# must be readable by akmods user. Make the key group-owned by akmods and group-readable.
+chown root:akmods /etc/pki/akmods/private/private_key.priv 2>/dev/null || true
+chmod 0640 /etc/pki/akmods/private/private_key.priv 2>/dev/null || true
+chmod 0755 /etc/pki/akmods /etc/pki/akmods/private /etc/pki/akmods/certs 2>/dev/null || true
 ls -la /etc/pki/akmods/private/ /etc/pki/akmods/certs/ || true
 
 # Build all required kmods. Run as root (we need to install RPMs); akmods uses runuser
