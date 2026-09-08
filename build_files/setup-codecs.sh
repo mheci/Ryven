@@ -50,3 +50,4 @@ cat > /usr/lib/firefox/distribution/policies.json <<'EOF'
 EOF
 
 echo "Codecs installed, VA-API defaulting to nvidia."
+ 2>/dev/null || true

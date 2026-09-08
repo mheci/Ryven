@@ -5,8 +5,9 @@ try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; 
 set -euo pipefail
 shopt -s nullglob
 
-# Early container setup: create machine-id, /opt, required dirs so third-party RPMs and dconf work
-mkdir -p /etc /var/lib/dbus /opt /root/.cache /root/.config
+# Early container setup: create machine-id and required dirs so third-party RPMs and dconf work.
+# In rpm-ostree / composefs container builds /opt and /root may be mounted/symlinked; tolerate mkdir errors.
+( mkdir -p /etc /var/lib/dbus /opt /root/.cache /root/.config 2>/dev/null ) || true
 if ! [ -s /etc/machine-id ]; then
     dbus-uuidgen --ensure=/etc/machine-id 2>/dev/null || systemd-machine-id-setup 2>/dev/null || echo "unset" >/etc/machine-id
 fi
@@ -28,7 +29,7 @@ mkdir -p /etc/tuned
 rm -rf /etc/tuned/active_profile
 echo "ryven-gaming" > /etc/tuned/active_profile
 # Also set via profile_mode=manual so tuned doesn't auto-switch at boot
-mkdir -p /etc/tuned
+mkdir -p /etc/tuned 2>/dev/null || true
 echo "manual" > /etc/tuned/profile_mode 2>/dev/null || true
 tuned-adm profile ryven-gaming >/dev/null 2>&1 || echo "(tuned daemon not running in container; profile set via active_profile file)"
 

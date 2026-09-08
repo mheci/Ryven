@@ -10,7 +10,7 @@ shopt -s nullglob
 fc-cache -f 2>&1 || echo "(fc-cache failed; fonts will be cached at first login)"
 
 # Default dconf/Gsettings for dark theme (applies in both DEs). Requires a writable HOME and may fail without dbus; non-fatal.
-mkdir -p /root/.cache/dconf /root/.config/dconf
+( mkdir -p /root/.cache/dconf /root/.config/dconf 2>/dev/null ) || true
 if command -v dconf &>/dev/null; then
     # Note: dconf requires dbus-daemon (machine-id + session bus); skip in container if bus unavailable.
     (dbus-run-session -- dconf write /org/gnome/desktop/interface/color-scheme "'prefer-dark'" 2>/dev/null && \

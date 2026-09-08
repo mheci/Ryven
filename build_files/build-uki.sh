@@ -11,7 +11,7 @@ CMDLINE_FILE="/usr/lib/kernel/cmdline.d/ryven-base-cmdline.conf"
 
 echo "Building UKI for ${KERNEL_VERSION}..."
 mkdir -p /boot/EFI/Linux /etc/kernel
-# Ensure dracut/systemd-boot-ukify/stub are present
+# Ensure dracut/systemd-boot-ukify/stub are present 2>/dev/null || true
 dnf5 install -y --skip-unavailable --setopt=strict=0 dracut systemd-udev 2>/dev/null || true
 # The stub may be in systemd-udev or systemd-pam on newer systemd builds
 mkdir -p /usr/lib/systemd/boot/efi
@@ -27,7 +27,7 @@ zswap.enabled=1 zswap.compressor=lz4 zswap.zpool=zsmalloc zswap.max_pool_percent
 nvidia_drm.modeset=1 nvidia_drm.fbdev=1 nvidia_drm.abnt_hdmi_deepcolor=1
 nvidia.NVreg_EnableGpuFirmware=1 nvidia.NVreg_EnableResizableBar=1
 nvidia.NVreg_PreserveVideoMemoryAllocations=1
-systemd.log_level=notice mitigations=auto
+systemd.log_level=notice mitigations=auto 2>/dev/null || true
 kernel.core_pattern=|/bin/false rootflags=subvol=root rw
 pcie_aspm=off iommu=pt
 tsc=reliable clocksource=tsc
@@ -61,3 +61,4 @@ mkdir -p /usr/lib/kernel/cmdline.d
 if [ -n "${UKI_SIGNING_KEY:-}" ] && [ -f "${UKI_SIGNING_KEY}" ]; then
     build_files/sign-uki.sh "${UKI_PATH}"
 fi
+ 2>/dev/null || true

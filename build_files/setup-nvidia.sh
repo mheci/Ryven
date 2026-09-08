@@ -102,7 +102,7 @@ WantedBy=${target}
 UNIT
     fi
 done
-# Create the symlinks
+# Create the symlinks 2>/dev/null || true
 ln -sf /usr/lib/systemd/system/nvidia-suspend.service /etc/systemd/system/system-suspend.target.wants/nvidia-suspend.service 2>/dev/null || true
 ln -sf /usr/lib/systemd/system/nvidia-hibernate.service /etc/systemd/system/system-hibernate.target.wants/nvidia-hibernate.service 2>/dev/null || true
 ln -sf /usr/lib/systemd/system/nvidia-resume.service /etc/systemd/system/system-resume.target.wants/nvidia-resume.service 2>/dev/null || true

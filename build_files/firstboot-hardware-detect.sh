@@ -26,7 +26,7 @@ case "${CPU_VENDOR}" in
         ;;
 esac
 
-# Add primary user to realtime/games groups if they exist
+# Add primary user to realtime/games groups if they exist 2>/dev/null || true
 for user in $(getent passwd {1000..2000} | cut -d: -f1); do
     usermod -aG realtime,games "${user}" || true
 done

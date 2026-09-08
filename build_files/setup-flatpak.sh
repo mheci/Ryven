@@ -20,7 +20,7 @@ flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/
 mkdir -p /etc/flatpak/overrides
 [ -f system_files/common/etc/flatpak/overrides/global ] && cp system_files/common/etc/flatpak/overrides/global /etc/flatpak/overrides/global
 
-echo "Installing Bazaar + Flatseal..."
+echo "Installing Bazaar + Flatseal..." 2>/dev/null || true
 flatpak install -y --system flathub io.github.kolunmi.Bazaar com.github.tchx84.Flatseal 2>/dev/null || \
     echo "WARNING: Flatpak Bazaar/Flatseal install skipped (network or remote issue)"
 
