@@ -13,10 +13,10 @@ dnf5 install -y --skip-unavailable \
 
 echo "Enabling Terra (nvidia-vaapi, mesa, codecs)..."
 dnf5 -y install --nogpgcheck --repofrompath 'terra,https://repos.fyralabs.com/terra'"$(rpm -E %fedora)" terra-release terra-gpg-keys
-dnf5 config-manager --set-enabled terra-mesa terra-extras terra-nvidia
-# Terra higher priority than RPMFusion for codec/mesa packages
-dnf5 config-manager --setopt=terra.priority=50 --save
-dnf5 config-manager --setopt=terra-mesa.priority=40 --save
+# dnf5 uses `enable` as a subcommand of config-manager
+dnf5 config-manager enable terra-mesa terra-extras terra-nvidia 2>/dev/null || true
+# Terra higher priority than RPMFusion for codec/mesa packages (dnf5 setopt)
+dnf5 config-manager setopt terra.priority=50 terra-mesa.priority=40 --save 2>/dev/null || true
 
 echo "Installing NVIDIA open kernel driver + userspace..."
 dnf5 install -y --skip-unavailable \
