@@ -19,6 +19,8 @@ ENV IMAGE_VARIANT=wl \
 COPY build_files /tmp/build_files
 COPY system_files/common /
 COPY system_files/wl /
+COPY system_files/common /tmp/build_files/system_files/common
+COPY system_files/wl /tmp/build_files/system_files/wl
 COPY skel /tmp/skel
 
 RUN chmod +x /tmp/build_files/*.sh /tmp/build_files/akmods/*.sh

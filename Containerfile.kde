@@ -19,6 +19,8 @@ ENV IMAGE_VARIANT=kde \
 COPY build_files /tmp/build_files
 COPY system_files/common /
 COPY system_files/kde /
+COPY system_files/common /tmp/build_files/system_files/common
+COPY system_files/kde /tmp/build_files/system_files/kde
 COPY skel /tmp/skel
 
 # Make build scripts executable
