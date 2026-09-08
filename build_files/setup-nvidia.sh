@@ -44,12 +44,16 @@ dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
 
 echo "Installing third-party akmods..."
 # xone (Xbox One dongle) — try atim/xone COPR; may not exist for new Fedora releases (404).
-# Fall back to RPMFusion/Fedora's xone if available, else skip (--skip-unavailable).
+# Several repos (terra, fedora-multimedia, ublue-os/akmods) provide conflicting dkms-vs-akmod
+# variants. Pick akmod from rpmfusion-free/updates primarily; --allowerasing + --skip-broken.
 ( dnf5 copr enable -y atim/xone 2>/dev/null && echo "atim/xone COPR enabled" ) \
-    || echo "atim/xone COPR unavailable (404) for this Fedora release; using RPMFusion xpad/xone if available"
-dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
+    || echo "atim/xone COPR unavailable (404) for this Fedora release; trying RPMFusion"
+# Disable repos that ship dkms-* conflicts for these packages during this install
+dnf5 --setopt=terra.enabled=0 --setopt=fedora-multimedia.enabled=0 \
+     install -y --skip-unavailable --allowerasing --setopt=tsflags=noscripts \
     xone akmod-xone xpadneo akmod-xpadneo openrazer akmod-openrazer \
-    || dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
+    || dnf5 --setopt=terra.enabled=0 --setopt=fedora-multimedia.enabled=0 \
+        install -y --skip-unavailable --allowerasing --skip-broken --setopt=tsflags=noscripts \
         xpadneo akmod-xpadneo openrazer akmod-openrazer \
         || echo "WARNING: some third-party akmods unavailable; continuing"
 
@@ -58,11 +62,11 @@ dnf5 install -y --skip-unavailable --setopt=tsflags=noscripts \
 echo "Restoring real akmods binary..."
 dnf5 reinstall -y akmods || dnf5 install -y akmods
 
-# Explicitly enable NVIDIA driver services (image contract, no first-boot detection)
-systemctl enable --no-reload nvidia-persistenced.service
-systemctl enable --no-reload nvidia-suspend.service
-systemctl enable --no-reload nvidia-hibernate.service
-systemctl enable --no-reload nvidia-resume.service
+# Explicitly enable NVIDIA driver services (image contract, no first-boot detection).
+# Some services may not exist in all driver versions; fail soft.
+for svc in nvidia-persistenced.service nvidia-suspend.service nvidia-hibernate.service nvidia-resume.service; do
+    systemctl enable --no-reload "${svc}" 2>/dev/null || echo "WARNING: ${svc} not found; skipping enable"
+done
 
 # Coolbits 28 (overclock/fan control) via modprobe.d
 cat > /etc/modprobe.d/nvidia-coolbits.conf <<'EOF'
