@@ -17,6 +17,9 @@ echo "Installing CachyOS kernel..."
 rpm-ostree override remove kernel kernel-core kernel-modules kernel-modules-core kernel-modules-extra kernel-devel kernel-devel-matched 2>/dev/null || true
 dnf5 install -y --skip-unavailable kernel-cachyos-lto kernel-cachyos-lto-devel-matched
 
+echo "Removing Fedora zram-generator-defaults (conflicts with cachyos-settings; we disable zram anyway)"
+rpm-ostree override remove zram-generator-defaults 2>/dev/null || dnf5 -y remove zram-generator-defaults || true
+
 echo "Installing CachyOS tuning addons (from addons COPR)..."
 # scx-scheds-git is the actively-built package in the addons COPR (stable scx-scheds fails to build)
 # scxctl manages scheduler selection; cachyos-settings ships sysctl/udev/modprobe tunings;
@@ -44,3 +47,6 @@ fi
 dnf5 versionlock add kernel-cachyos-lto kernel-cachyos-lto-devel-matched
 
 echo "CachyOS kernel installed: $(rpm -q kernel-cachyos-lto)"
+
+# Mask zram services (Ryven uses zswap)
+systemctl mask systemd-zram-setup@zram0.service dev-zram0.swap zram-swap.service 2>/dev/null || true
