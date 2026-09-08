@@ -10,14 +10,50 @@ echo "Building akmods for kernel: ${KERNEL_VERSION}"
 if ! rpm -q "kernel-cachyos-lto-devel-matched" &>/dev/null; then
     dnf5 install -y --skip-unavailable kernel-cachyos-lto-devel-matched
 fi
+# Build toolchain: Clang/LLVM + kernel build tools
+dnf5 install -y --skip-unavailable akmods clang lld llvm llvm-devel \
+    make openssl kmod elfutils-devel perl flex bison bc dwarves 2>/dev/null || true
 # Ensure akmods binary exists
 if ! command -v akmods &>/dev/null; then
     dnf5 install -y --skip-unavailable akmods
 fi
 
-# Generate signing key if missing
+# Generate signing key if missing (akmods signs built modules).
+# kmodgenca fails with empty CN ("string too short" ASN1 error) when run
+# non-interactively; use openssl directly to create a valid cert.
+install -d -m 0755 /etc/pki/akmods/private /etc/pki/akmods/certs
 if [ ! -f /etc/pki/akmods/certs/public_key.der ]; then
-    kmodgenca -a --force
+    cat > /tmp/kmodgenca.cnf <<'KCNF'
+[ req ]
+default_bits = 2048
+distinguished_name = req_distinguished_name
+prompt = no
+string_mask = utf8only
+x509_extensions = v3_code_sign
+
+[ req_distinguished_name ]
+CN = "Ryven Akmods Signing Key"
+O = "Ryven"
+C = US
+ST = CA
+L = San Francisco
+emailAddress = build@ryven.local
+
+[ v3_code_sign ]
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature
+extendedKeyUsage=codeSigning
+KCNF
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout /etc/pki/akmods/private/private_key.priv \
+        -out /etc/pki/akmods/certs/public_key.der \
+        -outform DER \
+        -config /tmp/kmodgenca.cnf \
+        -extensions v3_code_sign 2>/dev/null \
+        || echo "WARNING: akmods signing key generation failed; will retry via kmodgenca"
+fi
+if [ ! -f /etc/pki/akmods/certs/public_key.der ]; then
+    kmodgenca -a --force 2>/dev/null || true
 fi
 
 # Clang/ThinLTO-compatible build flags for CachyOS-LTO kernel (Clang+ThinLTO, 1000Hz, x86-64-v3).
@@ -58,20 +94,42 @@ id akmods &>/dev/null || useradd -r -s /sbin/nologin -d /var/lib/akmods -G rpm a
 install -d -o akmods -g akmods -m 0755 /var/cache/akmods /var/lib/akmods /tmp/akmodsbuild 2>/dev/null || true
 
 # Build all required kmods: akmods refuses to run as root in container builds.
-# We already install akmod-nvidia with --setopt=tsflags=notriggers to skip its %post.
-# Run akmodsbuild (the direct builder) as akmods user with Clang/LLVM env.
+# Try akmods with --force first (our PATH shim converts runuser -> setpriv), falling back
+# to akmodsbuild directly against src.rpms.
 for mod in nvidia xone xpadneo openrazer; do
     echo "==> Building akmod: ${mod}"
-    setpriv --reuid=akmods --regid=akmods --clear-groups --inh-caps=-all -- \
-        akmodsbuild --kernels "${KERNEL_VERSION}" /usr/src/akmods/"${mod}"-kmod*.src.rpm \
-        || (echo "ERROR: akmod ${mod} build failed"; exit 1)
+    SRPM=$(ls /usr/src/akmods/"${mod}"-kmod*.src.rpm 2>/dev/null | head -n1 || echo "")
+    if [ -z "${SRPM}" ]; then
+        echo "  (no src.rpm found for ${mod}; skipping)"
+        continue
+    fi
+    # Run akmods (the wrapper script) as akmods user via our runuser shim.
+    if setpriv --reuid=akmods --regid=akmods --clear-groups --inh-caps=-all -- \
+        akmods --force --kernels "${KERNEL_VERSION}" --akmod "${mod}" 2>&1; then
+        echo "  ${mod} built via akmods"
+    elif setpriv --reuid=akmods --regid=akmods --clear-groups --inh-caps=-all -- \
+        akmodsbuild --kernels "${KERNEL_VERSION}" "${SRPM}" 2>&1; then
+        echo "  ${mod} built via akmodsbuild"
+    else
+        echo "ERROR: akmod ${mod} build failed" >&2
+        exit 1
+    fi
 done
 
-# Verify builds succeeded
-for mod in nvidia xone xpadneo openrazer; do
-    if ! ls "/usr/lib/modules/${KERNEL_VERSION}/extra/${mod}"*.ko* >/dev/null 2>&1; then
+# Verify builds succeeded (nvidia is mandatory; others optional per available repos)
+for mod in nvidia; do
+    if ! ls "/usr/lib/modules/${KERNEL_VERSION}/extra/${mod}"*.ko* >/dev/null 2>&1 \
+       && ! ls "/usr/lib/modules/${KERNEL_VERSION}/extra/"*/"${mod}"*.ko* >/dev/null 2>&1; then
         echo "ERROR: kmod ${mod} failed to build for ${KERNEL_VERSION}" >&2
         exit 1
+    fi
+done
+for mod in xone xpadneo openrazer; do
+    if ls "/usr/lib/modules/${KERNEL_VERSION}/extra/${mod}"*.ko* >/dev/null 2>&1 \
+       || ls "/usr/lib/modules/${KERNEL_VERSION}/extra/"*/"${mod}"*.ko* >/dev/null 2>&1; then
+        echo "  kmod ${mod}: built OK"
+    else
+        echo "  kmod ${mod}: not available (optional); skipping"
     fi
 done
 
