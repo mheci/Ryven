@@ -8,7 +8,7 @@ set -euo pipefail
 dnf5 config-manager addrepo --from-repofile=https://codecs.fedoraproject.org/openh264/$(rpm -E %fedora)/x86_64/ || true
 
 echo "Installing full codec stack (Terra first)..."
-dnf5 install -y --skip-unavailable --setopt=install_weak_deps=False \
+dnf5 install -y --skip-unavailable --setopt install_weak_deps=False \
     ffmpeg ffmpeg-libs \
     gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugins-bad-freeworld \
     gstreamer1-plugins-ugly-free gstreamer1-libav gstreamer1-plugin-openh264 \
