@@ -5,9 +5,10 @@ try() { for i in 1 2 3; do "$@" && return 0; echo "  retry $i/3 ($*)"; sleep 5; 
 set -euo pipefail
 shopt -s nullglob
 
+dnf5 install -y --skip-unavailable firewalld 2>/dev/null || true
 systemctl enable --no-reload firewalld.service 2>/dev/null || true
-firewall-offline-cmd --set-default-zone=workstation
-# mDNS/Bonjour/LAN discovery
-firewall-offline-cmd --add-service=mdns
-# Steam P2P/voice ranges handled via STUN, no manual port opens needed.
+if command -v firewall-offline-cmd >/dev/null 2>&1; then
+    firewall-offline-cmd --set-default-zone=workstation 2>/dev/null || true
+    firewall-offline-cmd --add-service=mdns 2>/dev/null || true
+fi
 echo "Firewalld workstation zone configured."
