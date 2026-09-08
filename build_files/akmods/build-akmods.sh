@@ -68,7 +68,7 @@ chmod 0644 /etc/pki/akmods/certs/* 2>/dev/null || true
 # Out-of-tree kmods against kernel-cachyos-lto (Clang+ThinLTO) are traditionally built
 # with the system GCC; CachyOS-LTO exports correct ARCH/COMPILER flags so modules link.
 # We only add -march=x86-64-v3 and disable LTO for the out-of-tree kmods.
-export KCFLAGS="-fno-lto -fno-split-lto-unit -march=x86-64-v3 -mtune=generic -Wno-error -Wno-incompatible-pointer-types -Wno-implicit-function-declaration -include string.h"
+export KCFLAGS="-fno-lto -fno-split-lto-unit -march=x86-64-v3 -mtune=generic -Wno-error -Wno-incompatible-pointer-types -Wno-implicit-function-declaration -Wno-declaration-after-statement"
 export MAKEFLAGS="-j$(nproc)"
 # Do NOT globally override CC/CXX/HOSTCC to clang; akmods/kmodtool build user-space
 # helpers with the distro compiler and kernel selects its own CC for module builds.
