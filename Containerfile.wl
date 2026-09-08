@@ -25,7 +25,6 @@ RUN chmod +x /tmp/build_files/*.sh /tmp/build_files/akmods/*.sh
 
 # Set up build environment
 RUN /tmp/build_files/setup-cachyos.sh && \
-    /tmp/build_files/akmods/fix_akmods_ostree_post.sh && \
     /tmp/build_files/setup-nvidia.sh && \
     /tmp/build_files/akmods/build-akmods.sh && \
     /tmp/build_files/setup-tuned.sh && \
