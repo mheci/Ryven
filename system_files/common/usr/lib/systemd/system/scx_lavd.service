@@ -1,0 +1,17 @@
+[Unit]
+Description=sched-ext scheduler scx_lavd
+Documentation=https://github.com/sched-ext/scx
+After=local-fs.target systemd-modules-load.service
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/sbin/rmmod sched_ext 2>/dev/null
+ExecStart=/usr/bin/scx_lavd
+Restart=on-failure
+RestartSec=2
+Slice=system.slice
+CPUSchedulingPolicy=rr
+CPUSchedulingPriority=98
+
+[Install]
+WantedBy=multi-user.target

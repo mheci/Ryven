@@ -1,0 +1,83 @@
+name: Build Ryven images
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 3 * * 6'
+  workflow_dispatch:
+
+jobs:
+  build-kde:
+    name: Build ryven-nvidia-open (KDE)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install buildah
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y buildah uidmap
+      - name: Build OCI image (KDE)
+        run: |
+          buildah bud \
+            --build-arg IMAGE_VARIANT=kde \
+            -t ghcr.io/mheci/ryven-nvidia-open:${GITHUB_SHA::12} \
+            -t ghcr.io/mheci/ryven-nvidia-open:44 \
+            -t ghcr.io/mheci/ryven-nvidia-open:latest \
+            -f Containerfile.kde .
+      - name: Push to GHCR
+        if: github.event_name != 'pull_request'
+        env:
+          REGISTRY_AUTH_FILE: /tmp/auth.json
+        run: |
+          echo '{"auths":{"ghcr.io":{"auth":"'$(echo -n "mheci:${{ secrets.GITHUB_TOKEN }}" | base64 -w0)'"}}}' > /tmp/auth.json
+          buildah push --authfile /tmp/auth.json ghcr.io/mheci/ryven-nvidia-open:latest
+          buildah push --authfile /tmp/auth.json ghcr.io/mheci/ryven-nvidia-open:44
+          buildah push --authfile /tmp/auth.json ghcr.io/mheci/ryven-nvidia-open:${GITHUB_SHA::12}
+      - name: Size check
+        run: |
+          SIZE=$(buildah inspect ghcr.io/mheci/ryven-nvidia-open:${GITHUB_SHA::12} --format '{{.Size}}' 2>/dev/null || echo 0)
+          SIZE_MB=$((SIZE/1024/1024))
+          echo "Image size: ${SIZE_MB} MB"
+          if [ $SIZE_MB -gt 9216 ] && [ $SIZE_MB -ne 0 ]; then echo "Image exceeds 9GB budget"; exit 1; fi
+
+  build-wl:
+    name: Build ryven-wl-nvidia-open (Hyprland)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install buildah
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y buildah uidmap
+      - name: Build OCI image (wl)
+        run: |
+          buildah bud \
+            --build-arg IMAGE_VARIANT=wl \
+            -t ghcr.io/mheci/ryven-wl-nvidia-open:${GITHUB_SHA::12} \
+            -t ghcr.io/mheci/ryven-wl-nvidia-open:44 \
+            -t ghcr.io/mheci/ryven-wl-nvidia-open:latest \
+            -f Containerfile.wl .
+      - name: Push to GHCR
+        if: github.event_name != 'pull_request'
+        env:
+          REGISTRY_AUTH_FILE: /tmp/auth.json
+        run: |
+          echo '{"auths":{"ghcr.io":{"auth":"'$(echo -n "mheci:${{ secrets.GITHUB_TOKEN }}" | base64 -w0)'"}}}' > /tmp/auth.json
+          buildah push --authfile /tmp/auth.json ghcr.io/mheci/ryven-wl-nvidia-open:latest
+          buildah push --authfile /tmp/auth.json ghcr.io/mheci/ryven-wl-nvidia-open:44
+          buildah push --authfile /tmp/auth.json ghcr.io/mheci/ryven-wl-nvidia-open:${GITHUB_SHA::12}
+      - name: Size check
+        run: |
+          SIZE=$(buildah inspect ghcr.io/mheci/ryven-wl-nvidia-open:${GITHUB_SHA::12} --format '{{.Size}}' 2>/dev/null || echo 0)
+          SIZE_MB=$((SIZE/1024/1024))
+          echo "Image size: ${SIZE_MB} MB"
+          if [ $SIZE_MB -gt 7168 ] && [ $SIZE_MB -ne 0 ]; then echo "Image exceeds 7GB budget"; exit 1; fi

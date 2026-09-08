@@ -1,0 +1,10 @@
+# uaccess for /dev/ntsync so games group users can access ntsync
+KERNEL=="ntsync", TAG+="uaccess", GROUP="games", MODE="0660"
+# Kyber scheduler for NVMe/SSD devices
+ACTION=="add|change", KERNEL=="sd[a-z]|nvme[0-9]*", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="kyber"
+# BFQ for rotational HDDs
+ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="1", ATTR{queue/scheduler}="bfq"
+# Input: group readable, set high resolution scroll for mice
+KERNEL=="mouse[0-9]*|event[0-9]*", GROUP="input", MODE="0640", TAG+="uaccess"
+# USB controller autosuspend off (gaming peripherals)
+ACTION=="add", SUBSYSTEM=="usb", ATTR{power/autosuspend}="-1"

@@ -1,0 +1,25 @@
+[ryven-gaming-tearing]
+Description=Allow Tearing for Fullscreen Games
+clientmachinematch=0
+types=1
+wmclass=steam_app_.*
+wmclassmatch=3
+wmclass=wine
+wmclassmatch=3
+wmclass=proton
+wmclassmatch=3
+wmclass=hl2_linux
+wmclassmatch=3
+wmclass=Lutris
+wmclassmatch=3
+wmclass=heroic
+wmclassmatch=3
+wmclass=Bottles
+wmclassmatch=3
+wmclass=gamescope.*
+wmclassmatch=3
+wmclass=Faugus
+wmclassmatch=3
+fullscreen=true
+fullscreenmatch=2
+tearing=true

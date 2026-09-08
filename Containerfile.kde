@@ -1,0 +1,50 @@
+# Ryven ryven-nvidia-open: KDE Plasma + CachyOS-LTO + nvidia-open
+FROM ghcr.io/ublue-os/kinoite-main:44
+ENV KERNEL_INSTALL_DIR=/dev/null \
+    INITRD_POST_UPDATE_DISABLE=true \
+    DNF5_DISABLE_POST_TRANSACTION_ACTIONS=true \
+    SYSTEMD_OFFLINE=1
+LABEL org.opencontainers.image.title="Ryven (KDE, nvidia-open)"
+LABEL org.opencontainers.image.description="High-performance CachyOS-LTO + nvidia-open KDE gaming image"
+LABEL org.opencontainers.image.vendor="Ryven"
+ARG IMAGE_VARIANT=kde
+ENV IMAGE_VARIANT=kde \
+    container=oci \
+    PRETTY_NAME="Ryven KDE (nvidia-open)" \
+    NAME=ryven-nvidia-open \
+    VARIANT=kde \
+    VARIANT_ID=ryven-nvidia-open
+
+# Copy build scripts and system files into image
+COPY build_files /tmp/build_files
+COPY system_files/common /
+COPY system_files/kde /
+COPY skel /tmp/skel
+
+# Make build scripts executable
+RUN chmod +x /tmp/build_files/*.sh /tmp/build_files/akmods/*.sh
+
+# Set up build environment: enable repos, install kernel/NVIDIA/tuning/apps, build akmods, UKI, clean up
+RUN /tmp/build_files/setup-cachyos.sh && \
+    /tmp/build_files/akmods/fix_akmods_ostree_post.sh && \
+    /tmp/build_files/setup-nvidia.sh && \
+    /tmp/build_files/akmods/build-akmods.sh && \
+    /tmp/build_files/setup-tuned.sh && \
+    /tmp/build_files/setup-codecs.sh && \
+    /tmp/build_files/setup-ai.sh && \
+    /tmp/build_files/setup-firewall.sh && \
+    /tmp/build_files/setup-core-apps.sh && \
+    /tmp/build_files/setup-flatpak.sh && \
+    /tmp/build_files/setup-themes.sh && \
+    /tmp/build_files/build-uki.sh
+
+# Enable first-boot hardware detect
+RUN systemctl enable firstboot-hardware-detect.service ryven-control.service tuned.service
+
+# Run verify.sh (prove it works)
+RUN /tmp/build_files/verify.sh
+
+# Cleanup
+RUN dnf clean all && \
+    rm -rf /tmp/build_files /var/cache/dnf/* /usr/share/gtk-doc/* /usr/share/doc/* /var/log/* && \
+    ostree container commit

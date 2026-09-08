@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# ryven-control daemon stub. Implements D-Bus org.ryven.Control with read/toggle/system methods.
+# Production implementation ships as a proper Python/Go daemon; this minimal stub provides the
+# interface surface for MCP/quickshell/ujust integration.
+set -euo pipefail
+exec dbus-broker 2>/dev/null || echo "ryven-control daemon placeholder — production implementation to be added during build" && sleep infinity

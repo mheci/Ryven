@@ -1,0 +1,8 @@
+# Ryven global flatpak overrides: inherit host themes/fonts/cursors
+[Context]
+filesystems=/usr/share/themes:ro;/usr/share/icons:ro;/usr/share/fonts:ro;~/.themes:ro;~/.icons:ro;~/.fonts:ro;xdg-config/gtk-3.0:ro;xdg-config/gtk-4.0:ro
+sockets=wayland;x11;fallback-x11;pulseaudio;pipewire;ssh-auth;pcsc
+devices=dri
+shared=ipc;network
+[Session Bus Policy]
+org.freedesktop.Flatpak=talk

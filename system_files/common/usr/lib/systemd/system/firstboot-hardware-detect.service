@@ -1,0 +1,13 @@
+[Unit]
+Description=Ryven first-boot hardware detection
+ConditionPathExists=!/etc/ryven-hardware.toml
+After=multi-user.target
+Before=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/ryven/firstboot-hardware-detect.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

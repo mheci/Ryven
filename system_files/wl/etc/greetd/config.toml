@@ -1,0 +1,6 @@
+[terminal]
+vt = 1
+
+[default_session]
+command = "gtkgreet -l -s /usr/share/hypr/ryven-default/greetd.css"
+user = "greeter"

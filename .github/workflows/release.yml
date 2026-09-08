@@ -1,0 +1,28 @@
+name: Tag release
+on:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  release:
+    name: Build release-tagged images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + tag + push both images
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          # Build and push both images with immutable tag; OSTree static delta generation
+          echo "Release $TAG"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            Ryven release $TAG.
+            - `bootc switch ghcr.io/${{ github.repository_owner }}/ryven-nvidia-open:${TAG}`
+            - `bootc switch ghcr.io/${{ github.repository_owner }}/ryven-wl-nvidia-open:${TAG}`

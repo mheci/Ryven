@@ -1,0 +1,14 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base"],
+  "schedule": ["before 3am on Saturday"],
+  "packageRules": [
+    { "matchDatasources": ["docker"], "groupName": "base image updates", "automerge": false },
+    { "matchPackageNames": ["quickshell"], "groupName": "quickshell", "automerge": false },
+    { "matchPackageNames": ["pi-coding-agent", "opencode-ai"], "groupName": "AI runtime" }
+  ],
+  "ignoreDeps": [],
+  "prConcurrentLimit": 2,
+  "platformCommit": "enabled",
+  "labels": ["dependencies"]
+}

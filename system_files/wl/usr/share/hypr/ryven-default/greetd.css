@@ -1,0 +1,36 @@
+/* Ryven gtkgreet theme (Catppuccin Mocha) */
+window {
+    background-color: #1e1e2e;
+    color: #cdd6f4;
+    font-family: Inter;
+}
+box#body {
+    margin: 25vh auto;
+    padding: 24px;
+    background-color: #313244;
+    border-radius: 12px;
+    min-width: 360px;
+}
+label#host-label {
+    font-size: 11pt;
+    color: #a6adc8;
+}
+label#clock-label {
+    font-size: 24pt;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+entry, button {
+    background: #45475a;
+    color: #cdd6f4;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 4px 0;
+}
+button:hover { background: #585b70; }
+button#login-button {
+    background: #89b4fa;
+    color: #1e1e2e;
+    font-weight: bold;
+}

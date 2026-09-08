@@ -1,0 +1,29 @@
+# Ryven Starship minimal prompt: ❯ char, blue path, git status, exit code
+format = "$path$git$cmd_duration$status$character"
+command_timeout = 1000
+add_newline = false
+
+[character]
+success_symbol = "[❯](bold blue)"
+error_symbol = "[❯](bold red)"
+vicmd_symbol = "[❮](bold green)"
+
+[path]
+style = "bold blue"
+truncation_length = 3
+truncate_to_repo = true
+format = "[$path]($style) "
+
+[git_branch]
+symbol = " "
+style = "bold purple"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+style = "bold yellow"
+format = "([+$added](green)*$modified(red) !$stashed(blue))$all_status"
+disabled = false
+
+[cmd_duration]
+min_time = 2000
+format = " took [$duration](bold yellow)"
