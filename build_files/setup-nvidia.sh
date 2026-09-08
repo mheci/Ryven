@@ -30,10 +30,10 @@ dnf5 copr enable -y atim/xone
 dnf5 install -y --skip-unavailable xone akmod-xone xpadneo akmod-xpadneo openrazer akmod-openrazer
 
 # Explicitly enable NVIDIA driver services (image contract, no first-boot detection)
-systemctl enable nvidia-persistenced.service
-systemctl enable nvidia-suspend.service
-systemctl enable nvidia-hibernate.service
-systemctl enable nvidia-resume.service
+systemctl enable --no-reload nvidia-persistenced.service
+systemctl enable --no-reload nvidia-suspend.service
+systemctl enable --no-reload nvidia-hibernate.service
+systemctl enable --no-reload nvidia-resume.service
 
 # Coolbits 28 (overclock/fan control) via modprobe.d
 cat > /etc/modprobe.d/nvidia-coolbits.conf <<'EOF'

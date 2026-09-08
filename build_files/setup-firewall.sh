@@ -2,7 +2,7 @@
 # Configure firewalld workstation defaults. No UPnP, no open SSH, mDNS allowed for LAN gaming.
 set -euo pipefail
 
-systemctl enable firewalld.service
+systemctl enable --no-reload firewalld.service
 firewall-offline-cmd --set-default-zone=workstation
 # mDNS/Bonjour/LAN discovery
 firewall-offline-cmd --add-service=mdns

@@ -60,9 +60,9 @@ if [ "${IMAGE_VARIANT:-}" = "kde" ]; then
     dnf5 install -y --skip-unavailable --setopt=install_weak_deps=False \
         plasma-login-manager kde-gtk-config \
         --exclude=plasma-discover --exclude=PackageKit --exclude=packagekit-qt6 --exclude=akonadi* --exclude=kdepim* --exclude=kmail --exclude=korganizer --exclude=baloo*
-    systemctl mask sddm.service sddm-autologin.service 2>/dev/null || true
-    systemctl enable plasmalogin.service
-    systemctl mask baloo_file.service baloo_file_extractor.service akonadi.service 2>/dev/null || true
+    systemctl mask --no-reload sddm.service sddm-autologin.service 2>/dev/null || true
+    systemctl enable --no-reload plasmalogin.service
+    systemctl mask --no-reload baloo_file.service baloo_file_extractor.service akonadi.service 2>/dev/null || true
 fi
 
 echo "Core apps installed."

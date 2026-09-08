@@ -49,4 +49,4 @@ dnf5 versionlock add kernel-cachyos-lto kernel-cachyos-lto-devel-matched
 echo "CachyOS kernel installed: $(rpm -q kernel-cachyos-lto)"
 
 # Mask zram services (Ryven uses zswap)
-systemctl mask systemd-zram-setup@zram0.service dev-zram0.swap zram-swap.service 2>/dev/null || true
+systemctl mask --no-reload systemd-zram-setup@zram0.service dev-zram0.swap zram-swap.service 2>/dev/null || true
