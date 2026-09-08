@@ -14,7 +14,10 @@ systemctl enable --no-reload tuned.service nohang-desktop.service scx_lavd.servi
 
 # Copy tuned profile from our system_files
 cp -r system_files/common/usr/lib/tuned/ryven-gaming /usr/lib/tuned/
-tuned-adm profile ryven-gaming
+# tuned-adm profile tries to talk to DBus/tuned daemon which doesn't run in container; set default via symlink
+ln -sf /usr/lib/tuned/ryven-gaming /etc/tuned/active_profile 2>/dev/null || true
+echo "ryven-gaming" > /etc/tuned/active_profile 2>/dev/null || true
+tuned-adm profile ryven-gaming 2>/dev/null || echo "(tuned daemon not running in container; profile set via active_profile)"
 
 # Copy system configs
 cp system_files/common/usr/lib/sysctl.d/*.conf /usr/lib/sysctl.d/
